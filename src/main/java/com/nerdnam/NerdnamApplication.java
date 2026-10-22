@@ -1,0 +1,12 @@
+package com.nerdnam;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class NerdnamApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(NerdnamApplication.class, args);
+    }
+}

@@ -1,0 +1,11 @@
+# 로컬 개발 프로필 — compose.yaml 의 컨테이너에 접속
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/nerdnam
+    username: nerdnam
+    password: nerdnam
+
+logging:
+  level:
+    org.hibernate.SQL: debug              # 실행되는 SQL 출력
+    org.hibernate.orm.jdbc.bind: trace    # SQL 파라미터 값 출력

@@ -1,0 +1,30 @@
+# 로컬 개발용 인프라: PostgreSQL(+pgvector), Redis
+#   실행: docker compose up -d
+#   종료: docker compose down        (데이터 유지)
+#   초기화: docker compose down -v   (DB 볼륨까지 삭제 → 다음 실행 때 Flyway가 처음부터 다시 적용)
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: nerdnam-postgres
+    environment:
+      POSTGRES_DB: nerdnam
+      POSTGRES_USER: nerdnam
+      POSTGRES_PASSWORD: nerdnam
+    ports:
+      - "5432:5432"
+    volumes:
+      - nerdnam-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nerdnam -d nerdnam"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: nerdnam-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  nerdnam-pg:
