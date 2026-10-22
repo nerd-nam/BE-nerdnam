@@ -48,5 +48,6 @@ docker compose up -d     # PostgreSQL(pgvector) + Redis
 | `matching` | 적합도 분석·리포트 — 핵심 도메인 |
 | `guide` | 작성 방향, 이미지 프롬프트 |
 | `rag` | 청크·벡터 저장, 하이브리드 검색 |
+| `aijob` | AI 작업 상태(웹이 조회), 같은 대상 동시 1건 |
 | `infra.ai` | AI 서버 클라이언트 |
 | `common` | 공통 기반 코드 |
