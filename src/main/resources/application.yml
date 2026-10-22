@@ -27,3 +27,10 @@ management:
     web:
       exposure:
         include: health,info
+
+nerdnam:
+  ai:
+    base-url: http://localhost:8000   # AI 서버(FastAPI) 주소
+    stub: false                       # true 면 AI 서버 대신 고정 응답 스텁 (local 프로필은 true)
+    connect-timeout: 2s               # 연결 시간 제한. GPU 서버가 꺼져 있으면 빨리 실패하도록 짧게 (ADR-0001)
+    read-timeout: 30s                 # 응답 시간 제한
