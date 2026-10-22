@@ -51,6 +51,29 @@ public class SkillCatalog {
     }
 
     /**
+     * 공고 요건에서 뽑은 기술명 원문을 표준 이름으로 바꾼다 (F4: 정규화는 API 가 한다).
+     * 사전에 없는 이름은 원문 그대로 두고 사전 보강용으로 기록한다. 같은 기술은 한 번만.
+     */
+    @Transactional
+    public List<String> normalizeForPosting(Collection<String> rawNames) {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        for (String raw : rawNames) {
+            if (raw == null || raw.isBlank()) {
+                continue;
+            }
+            SkillNameKey key = SkillNameKey.of(raw);
+            Optional<Skill> found = findEntity(key);
+            if (found.isPresent()) {
+                names.add(found.get().getName());
+            } else {
+                unregisteredLog.record(raw.strip(), key, UnregisteredSkillNameLog.Source.JOB_POSTING);
+                names.add(raw.strip());
+            }
+        }
+        return List.copyOf(names);
+    }
+
+    /**
      * S02 자동완성. 표준 기술만, 이름·별칭에 검색어가 들어간 것.
      * 순서: 키가 똑같은 것 → 앞부분이 같은 것 → 들어 있는 것, 같은 순위 안에서는 이름순.
      */

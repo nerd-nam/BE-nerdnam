@@ -422,6 +422,11 @@ public class Project extends BaseTimeEntity {
         return Collections.unmodifiableList(episodes);
     }
 
+    /** 기간 칸이 모두 비어 있으면 Hibernate 가 임베디드 값을 null 로 읽으므로 빈 기간으로 돌려준다 */
+    public ProjectPeriod getPeriod() {
+        return period == null ? ProjectPeriod.empty() : period;
+    }
+
     public List<ProjectSupplement> getSupplements() {
         return Collections.unmodifiableList(supplements);
     }

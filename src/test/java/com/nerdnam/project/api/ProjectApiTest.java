@@ -261,6 +261,18 @@ class ProjectApiTest extends ApiTestSupport {
     }
 
     @Test
+    void 기간을_비운_프로젝트도_조회된다() throws Exception {
+        Long member = newMember();
+        Long project = readLong(postJson(member, null, "/api/projects").andExpect(status().isCreated()), "$.id");
+
+        getJson(member, "/api/projects/{id}", project)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.periodStart").doesNotExist());
+        getJson(member, "/api/projects/{id}/review", project).andExpect(status().isOk());
+        getJson(member, "/api/projects").andExpect(status().isOk());
+    }
+
+    @Test
     void 임시_저장은_version이_다르면_409() throws Exception {
         Long member = newMember();
         Long project = createProject(member, "본문");
