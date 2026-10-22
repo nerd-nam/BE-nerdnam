@@ -26,6 +26,29 @@ docker compose up -d     # PostgreSQL(pgvector) + Redis
 | 빌드 | Gradle 9.8.1 (Kotlin DSL) |
 | 테스트 | JUnit 5, AssertJ, Testcontainers 2 |
 
+## API (지금까지)
+
+로그인(BE-03) 전이라 local 프로필에서는 `X-Member-Id` 헤더로 회원을 정합니다. 로컬 DB에는 1번 회원이 들어 있습니다.
+
+| 메서드·경로 | 화면 | 내용 |
+| --- | --- | --- |
+| `GET /api/skills?query=&category=` | S02 | 표준 기술 사전 자동완성 (별칭 포함, 로그인 불필요) |
+| `GET /api/me/skills` | S02 | 내 기술스택 |
+| `POST /api/me/skills` | S02·S04 | 기술 추가 (`{"name", "category"?, "level"?}`. 사전에 없으면 category 필요) |
+| `PATCH /api/me/skills/{id}` | S02 | 숙련도 변경 (`{"level": 1~4}`) |
+| `DELETE /api/me/skills/{id}` | S02 | 삭제. 경력·프로젝트에서 쓰면 409 + `usages[]` |
+| `GET /api/me/careers` | S03 | 내 경력 (최신순) |
+| `POST /api/me/careers` | S03 | 경력 추가 (`startMonth`·`endMonth`는 `"2023-03"`) |
+| `PUT /api/me/careers/{id}` | S03 | 경력 수정 (조회 때 받은 `version` 필수, 어긋나면 409) |
+| `DELETE /api/me/careers/{id}` | S03 | 삭제. 프로젝트가 연결돼 있으면 409 + `usages[]` |
+
+```bash
+curl -H 'X-Member-Id: 1' localhost:8080/api/me/skills
+curl -X POST -H 'X-Member-Id: 1' -H 'Content-Type: application/json' -d '{"name":"리액트"}' localhost:8080/api/me/skills
+```
+
+오류는 모두 `ProblemDetail` 형식입니다: `{"title": "IN_USE", "status": 409, "detail": "화면에 보여줄 문장", ...}`
+
 ## 설계 문서
 
 | 문서 | 내용 |
