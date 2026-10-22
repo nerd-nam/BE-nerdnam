@@ -11,6 +11,8 @@ public interface UserSkillRepository extends Repository<UserSkill, Long> {
 
     void delete(UserSkill userSkill);
 
+    void flush();
+
     List<UserSkill> findAllByMemberIdOrderByIdAsc(Long memberId);
 
     /** 소유권 확인을 겸한 조회. 남의 것이면 비어 있다 */

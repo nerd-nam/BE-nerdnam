@@ -10,6 +10,7 @@ import com.nerdnam.profile.domain.UserSkillRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,11 +22,14 @@ public class CareerService {
     private final CareerRepository careers;
     private final UserSkillRepository userSkills;
     private final ProjectReferences projectReferences;
+    private final ApplicationEventPublisher events;
 
-    public CareerService(CareerRepository careers, UserSkillRepository userSkills, ProjectReferences projectReferences) {
+    public CareerService(CareerRepository careers, UserSkillRepository userSkills, ProjectReferences projectReferences,
+                         ApplicationEventPublisher events) {
         this.careers = careers;
         this.userSkills = userSkills;
         this.projectReferences = projectReferences;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -35,8 +39,18 @@ public class CareerService {
                 .toList();
     }
 
+    /** 다른 모듈(프로젝트)이 소속 경력을 확인·표시할 때. 남의 경력이면 비어 있다 */
+    @Transactional(readOnly = true)
+    public java.util.Optional<CareerView> find(Long memberId, Long careerId) {
+        if (careerId == null) {
+            return java.util.Optional.empty();
+        }
+        return careers.findByIdAndMemberId(careerId, memberId).map(CareerView::from);
+    }
+
     public CareerView create(Long memberId, CareerCommand command) {
         Career saved = careers.save(Career.create(memberId, toContent(memberId, command)));
+        changed(memberId);
         return CareerView.from(saved);
     }
 
@@ -47,7 +61,7 @@ public class CareerService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
         career.update(toContent(memberId, command));
-        careers.flush();   // UPDATE 를 지금 실행해 올라간 version 을 응답에 담는다
+        changed(memberId);   // UPDATE 를 지금 실행해 올라간 version 을 응답에 담고, rag 에 알린다
         return CareerView.from(career);
     }
 
@@ -63,6 +77,13 @@ public class CareerService {
                     Map.of("usages", usages));
         }
         careers.delete(career);
+        changed(memberId);
+    }
+
+    /** 바뀐 내용을 DB 에 반영한 뒤 알린다 (rag 가 같은 트랜잭션에서 SQL 로 다시 읽는다) */
+    private void changed(Long memberId) {
+        careers.flush();
+        events.publishEvent(new ProfileChanged(memberId));
     }
 
     private Career get(Long memberId, Long careerId) {

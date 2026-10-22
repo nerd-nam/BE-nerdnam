@@ -16,6 +16,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 실제 AI 서버를 부르는 구현. 연결 실패·5xx 는 한 번만 다시 시도하고(작업목록 BE-05),
@@ -25,6 +26,7 @@ public class HttpAiServerClient implements AiServerClient {
 
     private static final Logger log = LoggerFactory.getLogger(HttpAiServerClient.class);
     private static final int MAX_ATTEMPTS = 2;
+    private static final JsonMapper GUIDE_JSON = JsonMapper.builder().build();
 
     private final RestClient restClient;
 
@@ -71,6 +73,60 @@ public class HttpAiServerClient implements AiServerClient {
         }
         List<float[]> vectors = response.vectors().stream().map(HttpAiServerClient::toArray).toList();
         return new Embeddings(vectors, response.embeddingModel());
+    }
+
+    @Override
+    public RestructureResult restructure(RestructureRequest request) {
+        return post("restructure", "/restructure", request, RestructureResult.class);
+    }
+
+    @Override
+    public RequirementExtraction.Result extractRequirements(RequirementExtraction.Request request) {
+        return post("requirements/extract", "/requirements/extract", request, RequirementExtraction.Result.class);
+    }
+
+    @Override
+    public MatchCall.Result match(MatchCall.Request request) {
+        return post("match", "/match", request, MatchCall.Result.class);
+    }
+
+    @Override
+    public GapGuideCall.Result gapGuide(GapGuideCall.Request request) {
+        return post("gap-guide", "/gap-guide", request, GapGuideCall.Result.class);
+    }
+
+    /**
+     * /guide 는 SSE 로 응답한다. 웹으로 중계하지 않으므로 끝까지 받아 모은 뒤 마지막 {@code event: result}의
+     * data 를 결과로 쓴다. AI 서버가 SSE 대신 JSON 한 덩어리로 돌려줘도 받는다.
+     */
+    @Override
+    public GuideCall.Result guide(GuideCall.Request request) {
+        String body = call("guide", () -> restClient.post()
+                .uri("/guide")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.TEXT_EVENT_STREAM, MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(String.class));
+        try {
+            return GUIDE_JSON.readValue(ServerSentEvents.resultData(body), GuideCall.Result.class);
+        } catch (RuntimeException e) {
+            throw new AiServerUnavailableException(AiServerUnavailableException.Reason.AI_ERROR, "guide", e);
+        }
+    }
+
+    private <T> T post(String operation, String path, Object request, Class<T> type) {
+        T response = call(operation, () -> restClient.post()
+                .uri(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .retrieve()
+                .body(type));
+        if (response == null) {
+            throw new AiServerUnavailableException(AiServerUnavailableException.Reason.AI_ERROR, operation,
+                    new IllegalStateException("빈 응답"));
+        }
+        return response;
     }
 
     /** 연결 실패·5xx 는 한 번 더 시도한다. 4xx 는 요청이 잘못된 것이라 다시 시도하지 않는다 */

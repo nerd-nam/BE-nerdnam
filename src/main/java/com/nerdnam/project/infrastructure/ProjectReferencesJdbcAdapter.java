@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * profile 의 질문(이 기술·경력을 쓰는 프로젝트가 있나)에 project 모듈이 답한다.
- * Project 애그리거트를 아직 만들기 전이라 SQL 로 읽는다. 묶음 1에서 Project 저장소가 생기면 그쪽 조회로 바꿔도 된다.
+ * 단순 조회라 SQL 로 읽는다 (Project 애그리거트 전체를 불러올 필요가 없다).
  */
 @Component
 class ProjectReferencesJdbcAdapter implements ProjectReferences {

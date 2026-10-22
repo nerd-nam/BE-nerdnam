@@ -14,7 +14,8 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND, "대상을 찾을 수 없어요."),
     CONFLICT(HttpStatus.CONFLICT, "다른 곳에서 먼저 수정됐어요. 새로고침 후 다시 시도해 주세요."),
     IN_USE(HttpStatus.CONFLICT, "다른 곳에서 사용 중이라 삭제할 수 없어요."),
-    DOMAIN_RULE_VIOLATED(HttpStatus.UNPROCESSABLE_ENTITY, "지금은 할 수 없는 작업이에요."),
+    AI_JOB_RUNNING(HttpStatus.CONFLICT, "이미 진행 중인 AI 작업이 있어요. 끝난 뒤 다시 시도해 주세요."),
+    DOMAIN_RULE_VIOLATED(HttpStatus.UNPROCESSABLE_CONTENT, "지금은 할 수 없는 작업이에요."),
     AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "분석을 시작하지 못했어요. 입력한 내용은 그대로 남아 있으니 잠시 후 다시 시도해 주세요."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했어요.");
 

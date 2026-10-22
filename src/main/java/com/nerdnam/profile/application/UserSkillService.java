@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,13 +27,16 @@ public class UserSkillService {
     private final CareerRepository careers;
     private final SkillCatalog skillCatalog;
     private final ProjectReferences projectReferences;
+    private final ApplicationEventPublisher events;
 
     public UserSkillService(UserSkillRepository userSkills, CareerRepository careers,
-                            SkillCatalog skillCatalog, ProjectReferences projectReferences) {
+                            SkillCatalog skillCatalog, ProjectReferences projectReferences,
+                            ApplicationEventPublisher events) {
         this.userSkills = userSkills;
         this.careers = careers;
         this.skillCatalog = skillCatalog;
         this.projectReferences = projectReferences;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -41,6 +45,21 @@ public class UserSkillService {
         Map<Long, SkillSummary> skills = skillCatalog.getAll(mine.stream().map(UserSkill::getSkillId).toList())
                 .stream().collect(Collectors.toMap(SkillSummary::id, Function.identity()));
         return mine.stream().map(us -> toView(us, skills.get(us.getSkillId()))).toList();
+    }
+
+    /** 다른 모듈(프로젝트)이 고른 기술스택 항목을 이름과 함께 읽는다. 남의 것·없는 id 는 빠진다 */
+    @Transactional(readOnly = true)
+    public List<UserSkillView> getAll(Long memberId, java.util.Collection<Long> userSkillIds) {
+        if (userSkillIds.isEmpty()) {
+            return List.of();
+        }
+        List<UserSkill> mine = userSkills.findAllByMemberIdAndIdIn(memberId, userSkillIds);
+        Map<Long, SkillSummary> skills = skillCatalog.getAll(mine.stream().map(UserSkill::getSkillId).toList())
+                .stream().collect(Collectors.toMap(SkillSummary::id, Function.identity()));
+        return mine.stream()
+                .sorted(java.util.Comparator.comparing(UserSkill::getId))
+                .map(us -> toView(us, skills.get(us.getSkillId())))
+                .toList();
     }
 
     /**
@@ -54,6 +73,7 @@ public class UserSkillService {
                 .orElseGet(() -> {
                     Proficiency proficiency = level == null ? Proficiency.LEARNING : Proficiency.ofLevel(level);
                     UserSkill saved = userSkills.save(UserSkill.add(memberId, skill.id(), proficiency));
+                    changed(memberId);
                     return new AddResult(toView(saved, skill), true);
                 });
     }
@@ -61,6 +81,7 @@ public class UserSkillService {
     public UserSkillView changeLevel(Long memberId, Long userSkillId, int level) {
         UserSkill userSkill = get(memberId, userSkillId);
         userSkill.changeProficiency(Proficiency.ofLevel(level));   // 변경 감지로 UPDATE 된다 (save 불필요)
+        changed(memberId);
         SkillSummary skill = skillCatalog.getAll(List.of(userSkill.getSkillId())).getFirst();
         return toView(userSkill, skill);
     }
@@ -81,6 +102,13 @@ public class UserSkillService {
                     where + more + "에서 사용 중이라 삭제할 수 없어요.", Map.of("usages", usages));
         }
         userSkills.delete(userSkill);
+        changed(memberId);
+    }
+
+    /** 바뀐 내용을 DB 에 반영한 뒤 알린다 (rag 가 같은 트랜잭션에서 SQL 로 다시 읽는다) */
+    private void changed(Long memberId) {
+        userSkills.flush();
+        events.publishEvent(new ProfileChanged(memberId));
     }
 
     private UserSkill get(Long memberId, Long userSkillId) {
