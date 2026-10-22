@@ -20,7 +20,7 @@ class NerdnamApplicationTests {
     JdbcClient jdbc;
 
     @Test
-    @DisplayName("Flyway 가 app·rag 스키마의 테이블 26개를 만든다")
+    @DisplayName("Flyway 가 app·rag 스키마의 테이블 27개를 만든다")
     void migrationsApplied() {
         Integer tables = jdbc.sql("""
                         SELECT count(*) FROM information_schema.tables
@@ -29,7 +29,7 @@ class NerdnamApplicationTests {
                 .query(Integer.class)
                 .single();
 
-        assertThat(tables).isEqualTo(26);
+        assertThat(tables).isEqualTo(27);
     }
 
     @Test
