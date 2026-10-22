@@ -29,6 +29,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    // 로그인: Spring Security + OAuth2 소셜 로그인(Google·카카오), 쿠키 세션 (BE-03)
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
+
     // DB: JPA(Hibernate) + Flyway + PostgreSQL
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
@@ -41,6 +44,7 @@ dependencies {
 
     // 테스트: JUnit5 + AssertJ + Testcontainers(실제 PostgreSQL+pgvector 컨테이너)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")

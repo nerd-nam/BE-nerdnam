@@ -81,7 +81,7 @@ class ProjectLookup {
                 p.visibleEpisodes().stream().map(EpisodeView::from).toList(), runningJobId(p));
     }
 
-    private String companyName(Project p) {
+    String companyName(Project p) {
         return careers.find(p.getMemberId(), p.getCareerId()).map(CareerView::companyName).orElse(null);
     }
 

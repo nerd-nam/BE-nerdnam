@@ -8,6 +8,8 @@ spring:
     locations: classpath:db/migration,classpath:db/local   # db/local = 개발용 시드 (운영에는 없음)
 
 nerdnam:
+  auth:
+    mode: header                    # 로그인 없이 X-Member-Id 헤더로 회원을 고른다 (local 에서만 허용)
   ai:
     stub: true                      # AI 서버 대신 고정 응답 스텁을 쓴다. 실제 AI 서버에 붙일 때 false
     base-url: http://localhost:8000
