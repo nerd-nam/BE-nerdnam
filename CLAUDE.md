@@ -12,15 +12,15 @@ Claude Code 가 이 레포에서 일할 때 먼저 읽는 안내입니다. 사�
 ## 현재 상태 (2026-10-23)
 
 - `docs/04-개발-계획.md`의 묶음 1~4 구현 완료. AI 는 스텁으로만 확인했고 실제 AI 서버 연결은 아직.
+- **SPEC PR #15(기획서 v1.18 "AI 서버 공통 규칙")의 BE 요청 4가지 반영 완료** — `/embed` 요청 `items[]`(text·title), 읽기 시간 초과는 다시 시도 안 함, 엔드포인트별 읽기 시간 제한, `embedding_model == "stub"`이면 벡터 저장 안 함. 청크 제목 컬럼 `rag.chunk.title`(V4) 추가. 규칙은 `docs/06-AI-계약-초안.md`와 `docs/02` 7-1 표에.
 - PR 이 쌓여 있습니다: **#1** `chore/project-setup` → main, **#2** `feat/profile-skill-catalog` → #1, **#3** `feat/project-restructure-rag` → #2. 이 순서로 머지. 머지 후 GitHub 기본 브랜치를 `main`으로 바꿔야 함(지금 `chore/project-setup`).
-- SPEC 쪽 열린 PR: #14(FE, v1.17 확정 프로젝트 읽기 모드), #15(AI, v1.18 AI 서버 공통 규칙), #16(BE, v1.19 확정·제외 사례는 다시 검토하기 후 수정).
+- SPEC 쪽 열린 PR: #14(FE, v1.17 확정 프로젝트 읽기 모드), #15(AI, v1.18 AI 서버 공통 규칙 — BE 반영 끝), #16(BE, v1.19 확정·제외 사례는 다시 검토하기 후 수정).
 
 ## 다음 할 일 (우선순위 순)
 
-1. **SPEC PR #15 의 BE 요청 4가지 반영** (합의되면): `/embed` 요청을 `{"purpose", "items": [{"text", "title"}]}`로, 다시 시도는 연결 실패·503 만(읽기 시간 초과는 안 함), 엔드포인트별 읽기 시간 제한(`/guide` 120초 등), `embedding_model == "stub"`이면 벡터 저장 안 함. 고칠 곳: `infra/ai/HttpAiServerClient`, `AiServerProperties`, `rag/application/ChunkEmbedder`, `docs/06-AI-계약-초안.md`.
-2. 실제 AI 서버 연결 후 흐름 확인, 20초 목표 측정, 검색 가중치 조정.
-3. Redis: 세션 저장소(지금은 서버 메모리라 재시작하면 다시 로그인), 결과 캐시.
-4. 이메일 로그인(SPEC C-02 S01 확인할 것 1), 계약 테스트 CI(BE-16·17), JSON 값 대·소문자(C-03).
+1. 실제 AI 서버 연결 후 흐름 확인, 20초 목표 측정, 검색 가중치 조정. 연결하면 `nerdnam.ai.stub=false`, 읽기 시간 제한값도 실제 측정으로 조정.
+2. Redis: 세션 저장소(지금은 서버 메모리라 재시작하면 다시 로그인), 결과 캐시.
+3. 이메일 로그인(SPEC C-02 S01 확인할 것 1), 계약 테스트 CI(BE-16·17), JSON 값 대·소문자(C-03).
 
 ## 실행
 
@@ -41,6 +41,7 @@ curl -H 'X-Member-Id: 1' localhost:8080/api/me/onboarding
 - 모든 조회는 `findByIdAndMemberId` 처럼 소유권 확인. 없음·남의 것 모두 404.
 - **AI 호출은 `aijob.application.AiJobs.start(JobRequest, JobWork.of(prepare, call, apply))`** 로만. prepare·apply 는 짧은 트랜잭션, call 은 트랜잭션 밖. 이런 서비스에는 `@Transactional`을 붙이지 않는다. 응답은 202 + `jobId`, 같은 대상 진행 중이면 409 + `runningJobId`.
 - RAG: 원본 변경과 같은 트랜잭션에서 청크 텍스트만 맞추고(`PENDING`), 커밋 뒤 임베딩(`READY`). 검색 SQL 은 `rag/application/ChunkSearch`에만, `memberId` 필수.
+- AI 서버 호출 규칙(기획서 5.5)은 `docs/06-AI-계약-초안.md`에: 엔드포인트는 `infra/ai/AiEndpoint`, 읽기 시간 제한은 `nerdnam.ai.read-timeouts.*`, 읽기 시간 초과는 다시 시도하지 않는다, `embedding_model == "stub"`이면 벡터를 저장하지 않는다.
 - 오류는 `BusinessException(ErrorCode, "화면 문장", properties)` → ProblemDetail.
 - Flyway: 적용된 V 파일은 고치지 않는다. 새 `V4__...sql`. 테이블 수가 바뀌면 `NerdnamApplicationTests`의 개수도.
 - 인증: `nerdnam.auth.mode` = `session`(기본, OAuth2 + 쿠키 세션 + CSRF) / `header`(local 전용).

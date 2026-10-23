@@ -1,6 +1,7 @@
 package com.nerdnam.matching.application;
 
 import com.nerdnam.infra.ai.AiServerClient;
+import com.nerdnam.infra.ai.EmbedItem;
 import com.nerdnam.infra.ai.EmbedPurpose;
 import com.nerdnam.infra.ai.Embeddings;
 import com.nerdnam.infra.ai.GapGuideCall;
@@ -86,7 +87,8 @@ class FitAnalysisPipeline {
                 .toList();
 
         // 3. 요건 임베딩 → 4. 요건별 후보 (이 회원의 청크만)
-        Embeddings queries = ai.embed(requirements.stream().map(RequirementSnapshot::text).toList(), EmbedPurpose.QUERY);
+        Embeddings queries = ai.embed(                        // 요건 검색은 제목 없이 문구만 보낸다 (기획서 5.5)
+                requirements.stream().map(r -> EmbedItem.of(r.text())).toList(), EmbedPurpose.QUERY);
         Map<Long, List<Candidate>> candidates = new LinkedHashMap<>();
         for (int i = 0; i < requirements.size(); i++) {
             RequirementSnapshot r = requirements.get(i);

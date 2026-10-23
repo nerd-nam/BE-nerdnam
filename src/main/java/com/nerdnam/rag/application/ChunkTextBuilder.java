@@ -44,7 +44,7 @@ public final class ChunkTextBuilder {
         if (!s.usages().isEmpty()) {
             lines.add("사용처: " + String.join(", ", s.usages()));
         }
-        return new ChunkDraft(ChunkType.SKILL, s.userSkillId(), 1, null, String.join("\n", lines),
+        return new ChunkDraft(ChunkType.SKILL, s.userSkillId(), 1, null, s.name(), String.join("\n", lines),
                 List.of(s.name()), null, null, null, false);
     }
 
@@ -63,7 +63,8 @@ public final class ChunkTextBuilder {
         if (!c.skills().isEmpty()) {
             lines.add("사용 기술: " + String.join(", ", c.skills()));
         }
-        return new ChunkDraft(ChunkType.CAREER, c.careerId(), c.version(), null, String.join("\n", lines),
+        return new ChunkDraft(ChunkType.CAREER, c.careerId(), c.version(), null,
+                c.companyName() + " " + c.jobTitle(), String.join("\n", lines),
                 c.skills(), c.start(), c.end(), months, false);
     }
 
@@ -84,7 +85,7 @@ public final class ChunkTextBuilder {
         p.confirmedEpisodes().forEach(e -> lines.add("- " + e.title() + ": " + cut(firstLine(e.problem())) + " → "
                 + cut(firstLine(e.solution())) + " → " + cut(firstLine(e.result()))));
         boolean hasMetric = p.confirmedEpisodes().stream().anyMatch(EpisodeSource::hasMetric);
-        return new ChunkDraft(ChunkType.PROJECT_SUMMARY, p.projectId(), p.version(), p.projectId(),
+        return new ChunkDraft(ChunkType.PROJECT_SUMMARY, p.projectId(), p.version(), p.projectId(), p.title(),
                 String.join("\n", lines), p.skills(), p.start(), p.end(), monthsOrNull(p.start(), p.end()), hasMetric);
     }
 
@@ -102,8 +103,9 @@ public final class ChunkTextBuilder {
         if (!e.skills().isEmpty()) {
             lines.add("사용 기술: " + String.join(", ", e.skills()));
         }
-        return new ChunkDraft(ChunkType.EPISODE, e.episodeId(), e.versionNo(), p.projectId(), String.join("\n", lines),
-                e.skills(), p.start(), p.end(), monthsOrNull(p.start(), p.end()), e.hasMetric());
+        return new ChunkDraft(ChunkType.EPISODE, e.episodeId(), e.versionNo(), p.projectId(), e.title(),
+                String.join("\n", lines), e.skills(), p.start(), p.end(), monthsOrNull(p.start(), p.end()),
+                e.hasMetric());
     }
 
     /** 시작 월부터 끝 월까지 (양 끝 포함) */

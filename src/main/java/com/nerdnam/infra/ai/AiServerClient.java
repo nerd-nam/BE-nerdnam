@@ -13,8 +13,8 @@ public interface AiServerClient {
     /** GET /health — 실패해도 예외를 던지지 않고 ready=false 를 돌려준다 */
     AiServerHealth health();
 
-    /** POST /embed */
-    Embeddings embed(List<String> texts, EmbedPurpose purpose);
+    /** POST /embed — items 의 title 은 선택이다 ({@link EmbedItem#of}) */
+    Embeddings embed(List<EmbedItem> items, EmbedPurpose purpose);
 
     /** POST /restructure (P1) — 나누기·다시 나누기·사례 고치기 */
     RestructureResult restructure(RestructureRequest request);

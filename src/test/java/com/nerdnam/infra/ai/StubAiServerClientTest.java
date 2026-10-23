@@ -12,8 +12,8 @@ class StubAiServerClientTest {
 
     @Test
     void 같은_텍스트는_항상_같은_768차원_단위_벡터다() {
-        float[] first = stub.embed(List.of("결제 승인 API"), EmbedPurpose.DOCUMENT).vectors().getFirst();
-        float[] second = stub.embed(List.of("결제 승인 API"), EmbedPurpose.DOCUMENT).vectors().getFirst();
+        float[] first = stub.embed(List.of(EmbedItem.of("결제 승인 API")), EmbedPurpose.DOCUMENT).vectors().getFirst();
+        float[] second = stub.embed(List.of(EmbedItem.of("결제 승인 API")), EmbedPurpose.DOCUMENT).vectors().getFirst();
 
         assertThat(first).hasSize(StubAiServerClient.DIMENSIONS).containsExactly(second);
         double norm = 0;
@@ -25,8 +25,8 @@ class StubAiServerClientTest {
 
     @Test
     void 용도가_다르면_다른_벡터다() {
-        float[] document = stub.embed(List.of("Kafka"), EmbedPurpose.DOCUMENT).vectors().getFirst();
-        float[] query = stub.embed(List.of("Kafka"), EmbedPurpose.QUERY).vectors().getFirst();
+        float[] document = stub.embed(List.of(EmbedItem.of("Kafka")), EmbedPurpose.DOCUMENT).vectors().getFirst();
+        float[] query = stub.embed(List.of(EmbedItem.of("Kafka")), EmbedPurpose.QUERY).vectors().getFirst();
 
         assertThat(document).isNotEqualTo(query);
     }

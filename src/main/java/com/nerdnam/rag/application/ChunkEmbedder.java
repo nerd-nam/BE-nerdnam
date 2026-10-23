@@ -3,6 +3,7 @@ package com.nerdnam.rag.application;
 import com.nerdnam.infra.ai.AiCallContext;
 import com.nerdnam.infra.ai.AiServerClient;
 import com.nerdnam.infra.ai.AiServerUnavailableException;
+import com.nerdnam.infra.ai.EmbedItem;
 import com.nerdnam.infra.ai.EmbedPurpose;
 import com.nerdnam.infra.ai.Embeddings;
 import com.nerdnam.rag.infrastructure.ChunkStore;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 /**
  * PENDING 청크를 AI 서버로 임베딩해 READY 로 바꾼다. 트랜잭션 없이 돈다 (각 UPDATE 가 바로 커밋).
  * GPU 서버가 꺼져 있으면 PENDING 으로 두고, 5분마다 AI 서버가 준비됐는지 보고 다시 시도한다 (기획서 8장).
+ * AI 서버가 가짜 응답(stub) 모드면({@code embedding_model = "stub"}) 그 벡터는 저장하지 않고 역시 PENDING 으로 둔다 (기획서 5.5).
  */
 @Component
 public class ChunkEmbedder {
@@ -54,8 +56,13 @@ public class ChunkEmbedder {
                 if (batch.isEmpty()) {
                     break;
                 }
+                List<EmbedItem> items = batch.stream().map(p -> new EmbedItem(p.content(), p.title())).toList();
                 Embeddings embeddings = AiCallContext.with(new AiCallContext(memberId, "CHUNK", null),
-                        () -> ai.embed(batch.stream().map(Pending::content).toList(), EmbedPurpose.DOCUMENT));
+                        () -> ai.embed(items, EmbedPurpose.DOCUMENT));
+                if (embeddings.stub()) {
+                    log.info("AI server returned stub embeddings; chunks of member {} stay PENDING", memberId);
+                    break;
+                }
                 int marked = 0;
                 for (int i = 0; i < batch.size(); i++) {
                     if (store.markReady(batch.get(i).id(), batch.get(i).content(), embeddings.vectors().get(i),

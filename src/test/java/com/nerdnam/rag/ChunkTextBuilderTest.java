@@ -34,6 +34,7 @@ class ChunkTextBuilderTest {
                 숙련도: 능숙 — 설계부터 문제 해결까지 혼자 할 수 있다
                 사용처: OO커머스 경력, 결제 승인 API 성능 개선 프로젝트""");
         assertThat(chunk.type()).isEqualTo(ChunkType.SKILL);
+        assertThat(chunk.title()).isEqualTo("Spring Boot");
         assertThat(chunk.skills()).containsExactly("Spring Boot");
     }
 
@@ -50,6 +51,7 @@ class ChunkTextBuilderTest {
                 - 결제 API 설계·운영
                 - 정산 배치 개선
                 사용 기술: Kafka, Spring Boot""");
+        assertThat(chunk.title()).isEqualTo("OO커머스 백엔드 개발자");
         assertThat(chunk.months()).isEqualTo(24);
         assertThat(chunk.periodEnd()).isNull();
         assertThat(chunk.sourceVersion()).isEqualTo(3);
@@ -66,6 +68,7 @@ class ChunkTextBuilderTest {
                 사용 기술: Kafka, Redis, Spring Boot
                 사례:
                 - 결제 승인 응답 지연 개선: 프로모션 기간 결제 승인 응답이 평균 1.2초까지 느려져 이탈 발생 → 가맹점 조회를 Redis 캐시로 전환, 승인 후처리를 Kafka 비동기로 분리 → 평균 응답 1.2초 → 0.3초, 피크 TPS 약 2배 처리""");
+        assertThat(chunk.title()).isEqualTo("결제 승인 API 성능 개선");
         assertThat(chunk.projectId()).isEqualTo(102L);
         assertThat(chunk.months()).isEqualTo(5);
         assertThat(chunk.hasMetric()).isTrue();
@@ -83,6 +86,7 @@ class ChunkTextBuilderTest {
                 해결: 가맹점 조회를 Redis 캐시로 전환, 승인 후처리를 Kafka 비동기로 분리
                 결과: 평균 응답 1.2초 → 0.3초, 피크 TPS 약 2배 처리
                 사용 기술: Spring Boot, Redis, Kafka""");
+        assertThat(chunk.title()).isEqualTo("결제 승인 응답 지연 개선");   // 임베딩 요청의 items[].title (기획서 5.5)
         assertThat(chunk.sourceId()).isEqualTo(201L);
         assertThat(chunk.sourceVersion()).isEqualTo(2);
         assertThat(chunk.projectId()).isEqualTo(102L);

@@ -21,8 +21,8 @@ class RecordingAiServerClient implements AiServerClient {
     }
 
     @Override
-    public Embeddings embed(List<String> texts, EmbedPurpose purpose) {
-        return recorded("EMBED", () -> delegate.embed(texts, purpose), Embeddings::embeddingModel, r -> null);
+    public Embeddings embed(List<EmbedItem> items, EmbedPurpose purpose) {
+        return recorded("EMBED", () -> delegate.embed(items, purpose), Embeddings::embeddingModel, r -> null);
     }
 
     @Override

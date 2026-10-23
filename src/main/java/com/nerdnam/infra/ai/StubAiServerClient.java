@@ -41,8 +41,8 @@ public class StubAiServerClient implements AiServerClient {
     }
 
     @Override
-    public Embeddings embed(List<String> texts, EmbedPurpose purpose) {
-        List<float[]> vectors = texts.stream().map(text -> vectorOf(text, purpose)).toList();
+    public Embeddings embed(List<EmbedItem> items, EmbedPurpose purpose) {
+        List<float[]> vectors = items.stream().map(item -> vectorOf(item.text(), purpose)).toList();
         return new Embeddings(vectors, MODEL);
     }
 

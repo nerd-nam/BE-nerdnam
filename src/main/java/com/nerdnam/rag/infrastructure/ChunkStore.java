@@ -22,7 +22,7 @@ public class ChunkStore {
     public record Stored(long id, ChunkType type, long sourceId, int sourceVersion, String content) {
     }
 
-    public record Pending(long id, String content) {
+    public record Pending(long id, String title, String content) {
     }
 
     public List<Stored> profileChunks(long memberId) {
@@ -61,9 +61,11 @@ public class ChunkStore {
     /** 벡터 없이 PENDING 으로 저장한다. 임베딩은 커밋 뒤에 따로 (GPU 가 꺼져 있어도 확정은 된다) */
     public void insertPending(long memberId, ChunkDraft c) {
         jdbc.sql("""
-                        INSERT INTO rag.chunk (member_id, chunk_type, source_id, source_version, project_id, content,
+                        INSERT INTO rag.chunk (member_id, chunk_type, source_id, source_version, project_id,
+                                               title, content,
                                                skills, period_start, period_end, months, has_metric)
-                        VALUES (:m, :type, :sourceId, :sourceVersion, :projectId, :content,
+                        VALUES (:m, :type, :sourceId, :sourceVersion, :projectId,
+                                :title, :content,
                                 :skills, :periodStart, :periodEnd, :months, :hasMetric)
                         """)
                 .param("m", memberId)
@@ -71,6 +73,7 @@ public class ChunkStore {
                 .param("sourceId", c.sourceId())
                 .param("sourceVersion", c.sourceVersion())
                 .param("projectId", c.projectId())
+                .param("title", c.title())
                 .param("content", c.content())
                 .param("skills", c.skills().toArray(String[]::new))
                 .param("periodStart", date(c.periodStart()))
@@ -82,13 +85,13 @@ public class ChunkStore {
 
     public List<Pending> pending(long memberId, int limit) {
         return jdbc.sql("""
-                        SELECT id, content FROM rag.chunk
+                        SELECT id, title, content FROM rag.chunk
                         WHERE member_id = :m AND embedding_status = 'PENDING'
                         ORDER BY id LIMIT :limit
                         """)
                 .param("m", memberId)
                 .param("limit", limit)
-                .query((rs, n) -> new Pending(rs.getLong(1), rs.getString(2)))
+                .query((rs, n) -> new Pending(rs.getLong(1), rs.getString(2), rs.getString(3)))
                 .list();
     }
 
