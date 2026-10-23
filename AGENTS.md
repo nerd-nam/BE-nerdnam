@@ -14,9 +14,12 @@ Codex 가 이 레포에서 일할 때 먼저 읽는 안내입니다. 사람도 �
 **1. 시작 전 — SPEC-nerdnam 변경사항 확인.** 기획이 자주 바뀌고 여러 담당자가 PR 로 머지합니다. 코드를 건드리기 전에:
 
 ```bash
-cd ../SPEC-nerdnam && git fetch --quiet && git log --oneline -15 && head -25 기획서.md
+cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 기획서.md
 ```
 
+- **`fetch` 가 아니라 `pull` 입니다.** `fetch` 는 원격 정보만 받아 두고 작업 트리는 그대로 둡니다. 그러면 바로 뒤의 `git log` 와 `기획서.md` 는 **옛 로컬 상태**를 보여 줘서 "변경 없음"으로 잘못 읽습니다. 기획서·계약·디자인 파일을 실제로 읽어야 하므로 받아 와야 합니다.
+- `--ff-only` 를 붙입니다. 그냥 `git pull` 은 로컬이 갈라져 있으면 머지 커밋을 만들어 공용 레포 이력을 더럽힙니다 (SPEC 의 `8400f80` 이 그렇게 생긴 커밋입니다). `--ff-only` 는 빨리 감기가 안 되면 그냥 멈춥니다.
+- 멈추면(로컬 커밋이 있거나 갈라짐) 합치지 말고 원격만 들여다봅니다: `git fetch && git log --oneline HEAD..origin/main && git show origin/main:기획서.md | head -25`. 이때 SPEC 을 정리하는 일은 사용자에게 알립니다.
 - `기획서.md` 변경 이력 맨 위 버전과 아래 "현재 상태"에 적힌 **반영 완료 버전**을 비교합니다.
 - 차이가 있으면 그 커밋의 diff(`git show <해시>`)를 읽고 BE 할 일을 먼저 추립니다. 문서만 바뀐 변경(FE·디자인)도 BE 영향이 있는지 확인합니다 — 화면 규칙이 응답 필드로 내려오는 경우가 많습니다.
 - 반영을 끝내면 이 파일의 "현재 상태" 버전을 올립니다.
@@ -39,7 +42,8 @@ cd ../SPEC-nerdnam && git fetch --quiet && git log --oneline -15 && head -25 기
   - v1.20 **AI 서버 입력 규칙**(어기면 422): `/restructure` mode 를 `initial`(첫 나누기) / `split`(다시 나누기, 피드백 필수) / `episode` 로 나눠 보낸다, `/guide` tab 은 웹 주소와 같은 값(`motive`·`intro`·`portfolio`·`career`·`image`). 개발용 스텁도 같은 규칙을 검사해 `AI_ERROR` 로 실패시킨다.
   - 규칙은 `docs/06-AI-계약-초안.md`(AI 계약)와 `docs/02` 7-1·8장 표에.
 - PR 이 쌓여 있습니다: **#1** `chore/project-setup` → main, **#2** `feat/profile-skill-catalog` → #1, **#3** `feat/project-restructure-rag` → #2. 이 순서로 머지. 머지 후 GitHub 기본 브랜치를 `main`으로 바꿔야 함(지금 `chore/project-setup`).
-- SPEC 쪽 열린 PR 없음 (v1.20 까지 모두 머지됨). SPEC 을 다시 볼 때는 `기획서.md` 변경 이력 맨 위 버전이 v1.20 보다 높은지 확인.
+- **v1.21(PR #19)은 확인했고 BE 가 할 일은 없습니다** — S05 읽기 모드의 머리글을 온보딩 머리글 대신 앱 머리글("내 경험")로 쓰고, Next.js 라우트 그룹을 `(review)` 로 나누는 FE 전용 변경입니다. 머리글을 고르는 데 필요한 `status`·`reregistering` 은 이미 검토 화면 응답에 있습니다.
+- SPEC 쪽 열린 PR 없음 (v1.21 까지 모두 머지됨). SPEC 을 다시 볼 때는 `기획서.md` 변경 이력 맨 위 버전이 v1.21 보다 높은지 확인.
 
 ## 다음 할 일 (우선순위 순)
 

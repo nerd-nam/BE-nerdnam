@@ -3,7 +3,7 @@
 nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의 `nerdnam-api`에 해당합니다.
 인증, 도메인 로직, 데이터 저장(PostgreSQL + pgvector), AI 서버 호출 조율을 맡습니다.
 
-- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.20, `작업목록.md`, ADR-0001~0004
+- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.21, `작업목록.md`, ADR-0001~0004
 - 따르는 계약: `contracts-v0.1.0` (합의 후 기입)
 
 ## 빠른 시작
