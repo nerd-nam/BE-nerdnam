@@ -15,6 +15,48 @@ spring:
         jdbc:
           time_zone: UTC
 
+  jackson:                      # 응답 JSON 의 enum 값은 소문자 (D-10, 기획서 v1.25). MET → "met", IN_PROGRESS → "in_progress"
+    datatype:
+      enum:
+        write_enums_to_lowercase: true
+    mapper:
+      accept-case-insensitive-enums: true   # 요청은 대·소문자 모두 받는다 (웹이 보내는 값이 바뀌는 중)
+
+  data:
+    redis:                      # 세션 저장소·결과 캐시 (기획서 5.3). 로컬은 compose.yaml 의 컨테이너
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s               # 명령 하나의 제한 시간. Redis 가 느려도 요청이 매달리지 않게 짧게
+  session:                      # 세션을 서버 메모리에 두면 재시작·서버 2대에서 로그인이 풀린다.
+    timeout: 7d                 # 저장소는 클래스패스로 정해진다 (spring-boot-starter-session-data-redis)
+    data:                       # 쿠키는 브라우저를 닫으면 사라진다 (기본값 — 세션 쿠키)
+      redis:
+        namespace: nerdnam:session   # 키는 nerdnam:session:sessions:{세션 id}
+        repository-type: default     # 키스페이스 알림을 구독하지 않는 방식. indexed 는 Redis 설정이 더 필요하다
+
+  security:
+    oauth2:
+      client:
+        registration:             # 클라이언트 id·비밀값은 환경 변수로 (없으면 로그인만 안 된다)
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:not-configured}
+            scope: profile,email  # openid 를 빼서 OAuth2(UserInfo) 흐름으로 받는다 → MemberOAuth2UserService
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID:not-configured}
+            client-secret: ${KAKAO_CLIENT_SECRET:not-configured}
+            client-authentication-method: client_secret_post
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: profile_nickname,account_email
+            client-name: Kakao
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+
   flyway:
     schemas: app,rag          # Flyway가 관리하는 스키마 (없으면 만든다)
     default-schema: app       # flyway_schema_history 테이블 위치
@@ -27,3 +69,28 @@ management:
     web:
       exposure:
         include: health,info
+
+nerdnam:
+  auth:
+    mode: session                     # session = 소셜 로그인 쿠키 세션 / header = X-Member-Id (local 전용)
+    terms-version: "2026-10"          # 약관 버전. 바꾸면 모두에게 동의를 다시 받는다
+    web-origin: http://localhost:3000 # 웹 주소 (CORS)
+    login-success-url: http://localhost:3000/
+    login-failure-url: http://localhost:3000/?login=failed
+  ai:
+    base-url: http://localhost:8000   # AI 서버(FastAPI) 주소
+    stub: false                       # true 면 AI 서버 대신 고정 응답 스텁 (local 프로필은 true)
+    connect-timeout: 2s               # 연결 시간 제한. GPU 서버가 꺼져 있으면 빨리 실패하도록 짧게 (ADR-0001)
+    read-timeout: 30s                 # 응답 시간 제한 기본값 (아래 목록에 없는 엔드포인트)
+    read-timeouts:                    # 엔드포인트별 응답 시간 제한 — 성능 목표의 약 2배 (기획서 5.5)
+      health: 2s
+      embed: 10s
+      requirements-extract: 20s       # 리포트 20초 안의 한 단계
+      restructure: 30s                # 재구성 목표 15초
+      match: 30s                      # 리포트 목표 20초
+      gap-guide: 20s                  # 실패하면 기본 문구로 대신한다 (ADR-0003)
+      guide: 120s                     # 작성 방향 목표 60초
+  ai-job:
+    sync: false                       # true 면 AI 작업을 요청 스레드에서 바로 실행 (테스트용)
+    stale-after: 10m                  # 이보다 오래 진행 중인 작업은 실패(TIMEOUT)로 정리
+    threads: 4                        # AI 작업 스레드 수
