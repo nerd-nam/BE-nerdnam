@@ -34,6 +34,14 @@ class ApiAiContractTest {
     private static final JsonNode CONTRACT = readYaml("/contracts/api-ai.openapi.yaml");
     private static final JsonNode SCHEMAS = CONTRACT.path("components").path("schemas");
 
+    @Test
+    void 생성_엔드포인트에_서버_시간_초과_응답이_명시돼_있다() {
+        for (String path : List.of("/restructure", "/requirements/extract", "/match", "/gap-guide", "/guide")) {
+            assertThat(CONTRACT.path("paths").path(path).path("post").path("responses").has("504"))
+                    .as("%s의 504는 TIMEOUT이며 재시도하지 않는다", path).isTrue();
+        }
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("records")
     void 요청과_응답의_JSON_필드와_필수_목록이_계약과_같다(String schemaName, Object sample,
