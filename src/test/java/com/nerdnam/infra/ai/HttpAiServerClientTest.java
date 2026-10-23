@@ -20,6 +20,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -110,14 +112,27 @@ class HttpAiServerClientTest {
         server.verify();
     }
 
-    @Test
-    void 그_밖의_5xx는_한_번_더_시도하고_AI_오류로_본다() {
+    @ParameterizedTest
+    @EnumSource(value = HttpStatus.class, names = {"INTERNAL_SERVER_ERROR", "BAD_GATEWAY"})
+    void 그_밖의_5xx는_한_번_더_시도하고_AI_오류로_본다(HttpStatus status) {
         server.expect(times(2), requestTo(BASE + "/embed"))
-                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+                .andRespond(withStatus(status));
 
         assertThatThrownBy(() -> client.embed(List.of(EmbedItem.of("a")), EmbedPurpose.QUERY))
                 .isInstanceOfSatisfying(AiServerUnavailableException.class,
                         e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.AI_ERROR));
+        server.verify();
+    }
+
+    @Test
+    void AI_서버의_504는_다시_시도하지_않고_TIMEOUT() {
+        server.expect(once(), requestTo(BASE + "/guide"))
+                .andRespond(withStatus(HttpStatus.GATEWAY_TIMEOUT));
+
+        assertThatThrownBy(() -> client.guide(new GuideCall.Request("motive", "회사", "개발자", "",
+                List.of(), List.of(), null)))
+                .isInstanceOfSatisfying(AiServerUnavailableException.class,
+                        e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.TIMEOUT));
         server.verify();
     }
 

@@ -24,7 +24,7 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * 실제 AI 서버를 부르는 구현. 실패하면 이유를 나눠 {@link AiServerUnavailableException}으로 바꾼다 (작업목록 BE-05).
  *
- * <p>다시 시도 규칙 (기획서 5.5 "AI 서버 공통 규칙"): 연결 실패·연결 시간 초과·503·그 밖의 5xx 는 한 번 더 시도한다.
+ * <p>다시 시도 규칙 (기획서 5.5 "AI 서버 공통 규칙"): 연결 실패·연결 시간 초과·503·504를 뺀 5xx 는 한 번 더 시도한다.
  * 4xx 는 요청이 잘못된 것이라 하지 않고, <b>읽기 시간 초과도 하지 않는다</b> — 같은 요청을 다시 보내면 GPU 부하만 두 배가 된다.
  *
  * <p>읽기 시간 제한은 엔드포인트마다 다르므로({@code /guide} 120초 등) 제한값별로 {@link RestClient}를 따로 만들어 둔다.
@@ -123,8 +123,8 @@ public class HttpAiServerClient implements AiServerClient {
     }
 
     /**
-     * /guide 는 SSE 로 응답한다. 웹으로 중계하지 않으므로 끝까지 받아 모은 뒤 마지막 {@code event: result}의
-     * data 를 결과로 쓴다. AI 서버가 SSE 대신 JSON 한 덩어리로 돌려줘도 받는다.
+     * /guide 는 탭마다 JSON 한 덩어리로 응답한다 (기획서 v1.23).
+     * 이전 SSE 응답을 해석하는 호환 처리는 유지하지만, 요청은 JSON만 받도록 보낸다.
      */
     @Override
     public GuideCall.Result guide(GuideCall.Request request) {
@@ -181,8 +181,8 @@ public class HttpAiServerClient implements AiServerClient {
     }
 
     /**
-     * 연결 실패·5xx(503 포함)는 한 번 더 시도한다. 4xx 는 요청이 잘못된 것이라 하지 않고,
-     * 읽기 시간 초과도 하지 않는다 — 같은 요청을 다시 보내면 GPU 부하만 두 배가 된다 (기획서 5.5).
+     * 연결 실패·5xx(504 제외)는 한 번 더 시도한다. 4xx 는 요청이 잘못된 것이라 하지 않고,
+     * 읽기 시간 초과·504도 하지 않는다 — 같은 요청을 다시 보내면 GPU 부하만 두 배가 된다 (기획서 v1.28).
      */
     private static boolean retryable(RestClientException e, AiServerUnavailableException.Reason reason) {
         if (reason == AiServerUnavailableException.Reason.TIMEOUT) {
@@ -198,6 +198,9 @@ public class HttpAiServerClient implements AiServerClient {
      */
     static AiServerUnavailableException.Reason classify(RestClientException e) {
         if (e instanceof HttpServerErrorException server) {
+            if (server.getStatusCode().value() == HttpStatus.GATEWAY_TIMEOUT.value()) {
+                return AiServerUnavailableException.Reason.TIMEOUT;
+            }
             return server.getStatusCode().value() == HttpStatus.SERVICE_UNAVAILABLE.value()
                     ? AiServerUnavailableException.Reason.GPU_UNAVAILABLE   // 서버는 떴지만 모델이 아직 준비 안 됨
                     : AiServerUnavailableException.Reason.AI_ERROR;

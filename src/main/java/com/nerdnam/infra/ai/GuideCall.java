@@ -6,15 +6,14 @@ import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.annotation.JsonNaming;
 
 /**
- * POST /guide (P4·P5) — 탭 하나의 작성 방향. AI 서버는 SSE 로 흘려 보내고, API 는 끝까지 받아 모은 뒤 저장한다
- * (웹으로 중계하지 않는다, 기획서 v1.11).
+ * POST /guide (P4·P5) — 탭 하나의 작성 방향을 JSON 한 덩어리로 받아 저장한다 (기획서 v1.23).
  */
 public final class GuideCall {
 
     private GuideCall() {
     }
 
-    /** @param tab motivation / self_introduction / portfolio / career_description / image_prompt */
+    /** @param tab motive / intro / portfolio / career / image */
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Request(String tab, String company, String position, String companyIntro, List<String> tasks,
                           List<Requirement> requirements, String feedback) {
