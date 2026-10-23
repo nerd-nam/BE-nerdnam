@@ -131,7 +131,7 @@ public class HttpAiServerClient implements AiServerClient {
         String body = call(AiEndpoint.GUIDE, () -> client(AiEndpoint.GUIDE).post()
                 .uri(AiEndpoint.GUIDE.path())
                 .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.TEXT_EVENT_STREAM, MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)   // 계약 C-04: JSON 하나 (SSE 없음, 기획서 v1.23)
                 .body(request)
                 .retrieve()
                 .body(String.class));

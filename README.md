@@ -3,8 +3,8 @@
 nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의 `nerdnam-api`에 해당합니다.
 인증, 도메인 로직, 데이터 저장(PostgreSQL + pgvector), AI 서버 호출 조율을 맡습니다.
 
-- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.21, `작업목록.md`, ADR-0001~0004
-- 따르는 계약: `contracts-v0.1.0` (합의 후 기입)
+- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.25, `작업목록.md`, ADR-0001~0004
+- 따르는 계약: `contracts/api-ai.openapi.yaml` v0.1 (C-04, 구현과 대조 완료 → `docs/06`). `web-api.openapi.yaml`(C-03)은 아직
 
 ## 빠른 시작
 
@@ -37,6 +37,7 @@ docker compose up -d     # PostgreSQL(pgvector) + Redis
 ## API
 
 오류는 모두 `ProblemDetail`입니다: `{"title": "IN_USE", "status": 409, "detail": "화면에 보여줄 문장", ...}`.
+**응답 JSON 의 값(판정·상태·유형)은 소문자**입니다 — `met`, `draft`, `in_progress` (D-10). 요청은 대·소문자 모두 받습니다. 오류 코드(`title`)만 대문자입니다.
 AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /api/ai-jobs/{jobId}`로 끝났는지 본 뒤 결과를 다시 읽습니다. 같은 대상에 진행 중인 작업이 있으면 `409 AI_JOB_RUNNING` + `runningJobId`.
 
 | 메서드·경로 | 화면 | 내용 |
@@ -73,10 +74,11 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `POST /api/job-postings`, `GET/PUT/DELETE /api/job-postings/{id}` | S07 | 첫 임시 저장(id 발급)·조회·자동 저장(`version`)·삭제 |
 | `POST /api/job-postings/{id}/analyses` | S07·S08 | 적합도 분석하기 / 다시 시도 → 202. 입력 오류면 400 + `violations[]` |
 | `GET /api/job-postings/{id}/report` | S08 | 최근 분석 리포트: 충족 수, 한 줄 진단, 요건별 판정·근거 카드(사례 근거는 `projectId` + `sourceId`로 S05 읽기 모드에서 펼침)·갭 가이드 |
-| `GET /api/fit-analyses/{id}` | S08 | 특정 분석 리포트 |
+| `GET /api/job-postings/{id}/analyses` | S08 | 분석 기록 (분석 id·상태·요청·완료 시각, 최신순) |
+| `GET /api/fit-analyses/{id}` | S08 | 특정 분석 리포트 (기록에서 고른 분석) |
 | **작성 방향 (S09)** | | |
 | `GET /api/job-postings/{id}/guides` | S09 | 탭 5개 상태 |
-| `GET/POST /api/job-postings/{id}/guides/{tab}` | S09 | 탭 결과·만들기/다시 만들기(`{"feedback"}` 선택) → 202. tab = motive·intro·portfolio·career·image |
+| `GET/POST /api/job-postings/{id}/guides/{tab}` | S09 | 탭 결과·만들기/다시 만들기 → 202. tab = motive·intro·portfolio·career·image. **다시 만들 때는 `{"feedback"}` 필수**(처음 만들 때는 없어도 됨) |
 | `GET/PUT /api/job-postings/{id}/guides/rating` | S09 | 방향 제시 만족도 평가 |
 
 ```bash
