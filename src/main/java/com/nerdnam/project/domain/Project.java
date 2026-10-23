@@ -374,15 +374,20 @@ public class Project extends BaseTimeEntity {
                 .toList();
     }
 
-    /** 검토 화면에 보여줄 사례: 검토 중이면 이번 검토 사례, 확정이면 확정·제외한 사례, 초안이면 없음 */
+    /**
+     * 검토 화면(S05)에 보여줄 사례: 검토 중이면 이번 검토 사례, 확정이면 <b>확정한 사례만</b>(읽기 모드,
+     * 기획서 v1.17 F2), 초안이면 없음. 확정 상태에서 제외한 사례는 저장(RAG)도 되지 않으므로 보여 주지 않는다.
+     *
+     * <p>재등록 중(초안)이면 비어 있다. 이전 확정 사례는 검색에 계속 쓰이지만(Q4) 재등록 중에는 원문을 고칠 수
+     * 있어 그 사례의 {@code sourceSpans}가 지금 원문과 맞지 않는다. 그래서 읽기 모드로 보여 주지 않고
+     * S06 "재등록 중" 카드의 요약으로만 보여 준다 (02 문서 8장 "S08 2 (재등록 중)" — FE·기획 확인 필요).
+     */
     public List<Episode> visibleEpisodes() {
         if (status == ProjectStatus.REVIEW) {
             return reviewEpisodes();
         }
         if (status == ProjectStatus.CONFIRMED) {
-            return episodes.stream()
-                    .filter(e -> e.getSplitRound() == splitRound && e.getStatus().isDecided())
-                    .toList();
+            return confirmedEpisodes();
         }
         return List.of();
     }

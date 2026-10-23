@@ -46,7 +46,11 @@ public final class ProjectViews {
                          int splitRound, int generationCount, long version, Long runningJobId) {
     }
 
-    /** 검토 화면 (S05) */
+    /**
+     * 검토 화면 (S05). {@code status}가 {@code CONFIRMED}면 웹은 <b>읽기 모드</b>로 그린다 (기획서 v1.17 F2):
+     * {@code episodes}에 확정한 사례만 담겨 오고, 결정·수정 요청·다시 나누기·확인 질문·버전 바꾸기 API 는
+     * 모두 422 로 막힌다. "수정"은 재등록({@code POST /reopen}) 뒤 S04 로 간다.
+     */
     public record Review(Long id, String title, ProjectStatus status, boolean reregistering, Affiliation affiliation,
                          String careerCompanyName, YearMonth periodStart, YearMonth periodEnd, String rawText,
                          String sourceText, List<SupplementView> supplements, List<SkillRef> skills, int splitRound,

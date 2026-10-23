@@ -3,10 +3,10 @@ package com.nerdnam.guide.domain;
 import com.nerdnam.common.error.BusinessException;
 import com.nerdnam.common.error.ErrorCode;
 import java.util.Arrays;
-import java.util.Locale;
 
 /**
- * 작성 방향 탭 (S09). path = 웹 주소의 탭 이름(/apply/[jdId]/guide/[tab]), aiName = AI 계약의 탭 이름.
+ * 작성 방향 탭 (S09). path = 웹 주소의 탭 이름(/apply/[jdId]/guide/[tab]).
+ * AI 계약의 탭 이름도 같은 값이다 (기획서 v1.20 입력 규칙 — 다른 값이면 422).
  */
 public enum GuideTab {
     MOTIVATION("motive"),
@@ -25,8 +25,9 @@ public enum GuideTab {
         return path;
     }
 
+    /** AI 서버 {@code /guide} 의 tab 값. 웹 주소와 같은 이름을 쓴다 (기획서 v1.20) */
     public String aiName() {
-        return name().toLowerCase(Locale.ROOT);
+        return path;
     }
 
     /** 웹 주소 이름(motive)과 enum 이름(MOTIVATION) 둘 다 받는다 */

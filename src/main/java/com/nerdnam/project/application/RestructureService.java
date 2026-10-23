@@ -48,7 +48,7 @@ public class RestructureService {
                 () -> {
                     Project p = lookup.get(memberId, projectId);
                     p.checkCanSplit();
-                    return splitRequest(p, List.of(), null);
+                    return splitRequest(p, RestructureRequest.MODE_INITIAL, List.of(), null);
                 },
                 ai::restructure,
                 result -> applySplit(memberId, projectId, result, null)));
@@ -61,7 +61,7 @@ public class RestructureService {
                     Project p = lookup.get(memberId, projectId);
                     p.checkCanResplit(feedback);
                     List<EpisodeContent> current = p.reviewEpisodes().stream().map(e -> e.current().content()).toList();
-                    return splitRequest(p, current, feedback);
+                    return splitRequest(p, RestructureRequest.MODE_SPLIT, current, feedback);
                 },
                 ai::restructure,
                 result -> applySplit(memberId, projectId, result, feedback)));
@@ -116,8 +116,12 @@ public class RestructureService {
         return projectId;
     }
 
-    private RestructureRequest splitRequest(Project p, List<EpisodeContent> current, String feedback) {
-        return new RestructureRequest(RestructureRequest.MODE_SPLIT, p.getTitle(), p.sourceText(), lookup.skillNames(p),
+    /**
+     * 나누기 요청. 첫 나누기는 {@code initial}, 다시 나누기는 {@code split} + 피드백이다 (기획서 v1.20 입력 규칙).
+     * 피드백은 {@code checkCanResplit()}가 먼저 검사하므로 AI 서버의 422 까지 가지 않는다.
+     */
+    private RestructureRequest splitRequest(Project p, String mode, List<EpisodeContent> current, String feedback) {
+        return new RestructureRequest(mode, p.getTitle(), p.sourceText(), lookup.skillNames(p),
                 p.previouslyConfirmedContents().stream().map(AiEpisodeMapper::toAi).toList(),
                 current.stream().map(AiEpisodeMapper::toAi).toList(), null, feedback, null);
     }

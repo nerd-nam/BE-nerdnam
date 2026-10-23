@@ -22,6 +22,9 @@ import java.util.regex.Pattern;
  *   <li>요건 추출: 영문 기술명 덩어리와 "N년"을 뽑는다.</li>
  *   <li>판정: 후보 청크에 요건 기술명이 들어 있으면 충족, 기술명이 없는 요건에 후보가 있으면 부분 충족, 아니면 미충족.</li>
  * </ul>
+ *
+ * <p>진짜 AI 서버와 같은 <b>입력 규칙</b>(기획서 v1.20)을 검사해 422 대신 {@code AI_ERROR}로 실패시킵니다.
+ * 잘못된 입력을 로컬 개발·테스트에서 바로 잡기 위한 것입니다.
  */
 public class StubAiServerClient implements AiServerClient {
 
@@ -35,6 +38,11 @@ public class StubAiServerClient implements AiServerClient {
     private static final Pattern SKILL = Pattern.compile("[A-Za-z][A-Za-z0-9+#.\\-]*(?:\\s[A-Z][A-Za-z0-9+#.\\-]*)*");
     private static final int MAX_EPISODES = 3;
 
+    /** /restructure 의 mode 와 /guide 의 tab 은 이 값만 받는다 (기획서 v1.20) */
+    private static final Set<String> MODES =
+            Set.of(RestructureRequest.MODE_INITIAL, RestructureRequest.MODE_SPLIT, RestructureRequest.MODE_EPISODE);
+    private static final Set<String> TABS = Set.of("motive", "intro", "portfolio", "career", "image");
+
     @Override
     public AiServerHealth health() {
         return new AiServerHealth(true, Map.of("llm", "ready", "embedding", "ready"));
@@ -42,12 +50,14 @@ public class StubAiServerClient implements AiServerClient {
 
     @Override
     public Embeddings embed(List<EmbedItem> items, EmbedPurpose purpose) {
+        requireItems(items, AiEndpoint.EMBED);
         List<float[]> vectors = items.stream().map(item -> vectorOf(item.text(), purpose)).toList();
         return new Embeddings(vectors, MODEL);
     }
 
     @Override
     public RestructureResult restructure(RestructureRequest request) {
+        checkRestructureInput(request);
         if (RestructureRequest.MODE_EPISODE.equals(request.mode())) {
             return new RestructureResult(List.of(revise(request)), LLM, PROMPT_VERSION);
         }
@@ -65,6 +75,7 @@ public class StubAiServerClient implements AiServerClient {
 
     @Override
     public RequirementExtraction.Result extractRequirements(RequirementExtraction.Request request) {
+        requireItems(request.lines(), AiEndpoint.REQUIREMENTS_EXTRACT);
         List<RequirementExtraction.Extracted> lines = request.lines().stream().map(line -> {
             Set<String> skills = new LinkedHashSet<>();
             Matcher m = SKILL.matcher(line.text());
@@ -80,6 +91,7 @@ public class StubAiServerClient implements AiServerClient {
 
     @Override
     public MatchCall.Result match(MatchCall.Request request) {
+        requireItems(request.requirements(), AiEndpoint.MATCH);
         List<MatchCall.Judgement> results = request.requirements().stream().map(req -> {
             List<String> skills = req.skills() == null ? List.of() : req.skills();
             List<Long> hits = req.candidates().stream()
@@ -101,6 +113,11 @@ public class StubAiServerClient implements AiServerClient {
 
     @Override
     public GapGuideCall.Result gapGuide(GapGuideCall.Request request) {
+        requireItems(request.requirements(), AiEndpoint.GAP_GUIDE);
+        request.requirements().stream()
+                .filter(r -> !"partial".equals(r.verdict()) && !"unmet".equals(r.verdict()))
+                .findFirst()
+                .ifPresent(r -> reject(AiEndpoint.GAP_GUIDE, "미충족·부분 충족 요건만 보낼 수 있어요: " + r.verdict()));
         List<GapGuideCall.Guide> guides = request.requirements().stream().map(req -> {
             boolean hasAdjacent = req.adjacent() != null && !req.adjacent().isEmpty();
             String advice = hasAdjacent
@@ -114,6 +131,9 @@ public class StubAiServerClient implements AiServerClient {
 
     @Override
     public GuideCall.Result guide(GuideCall.Request request) {
+        if (!TABS.contains(request.tab())) {
+            reject(AiEndpoint.GUIDE, "없는 탭 이름이에요: " + request.tab());
+        }
         List<Long> cited = request.requirements().stream()
                 .flatMap(r -> r.evidence() == null ? java.util.stream.Stream.empty() : r.evidence().stream())
                 .map(MatchCall.Candidate::chunkId)
@@ -135,6 +155,31 @@ public class StubAiServerClient implements AiServerClient {
             content.put("feedback_applied", request.feedback());
         }
         return new GuideCall.Result(content, cited, LLM, PROMPT_VERSION);
+    }
+
+    // ------------------------------------------------------------------ 입력 규칙 (기획서 v1.20)
+
+    private static void checkRestructureInput(RestructureRequest request) {
+        if (!MODES.contains(request.mode())) {
+            reject(AiEndpoint.RESTRUCTURE, "없는 mode 예요: " + request.mode());
+        }
+        if (RestructureRequest.MODE_SPLIT.equals(request.mode())
+                && (request.feedback() == null || request.feedback().isBlank())) {
+            reject(AiEndpoint.RESTRUCTURE, "다시 나누기(split)에는 피드백이 필요해요.");
+        }
+    }
+
+    /** 목록 입력(items·lines·requirements)은 1개 이상 */
+    private static void requireItems(List<?> items, AiEndpoint endpoint) {
+        if (items == null || items.isEmpty()) {
+            reject(endpoint, "보낼 항목이 없어요.");
+        }
+    }
+
+    /** 진짜 AI 서버의 422 와 같은 자리 — 4xx 는 다시 시도하지 않는다 (기획서 5.5 D-7) */
+    private static void reject(AiEndpoint endpoint, String reason) {
+        throw new AiServerUnavailableException(AiServerUnavailableException.Reason.AI_ERROR, endpoint.operation(),
+                new IllegalArgumentException(reason));
     }
 
     // ------------------------------------------------------------------ 재구성 규칙

@@ -75,10 +75,12 @@ class ProjectApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.detail", containsString("모든 사례를")));
         postJson(member, null, "/api/projects/{id}/episodes/{e}/exclude", project, second).andExpect(status().isOk());
 
+        // 확정하면 읽기 모드: 확정한 사례만 보이고 제외한 사례는 빠진다 (기획서 v1.17)
         postJson(member, null, "/api/projects/{id}/confirm", project)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
-                .andExpect(jsonPath("$.episodes[*].status", contains("CONFIRMED", "EXCLUDED")));
+                .andExpect(jsonPath("$.episodes[*].status", contains("CONFIRMED")));
+        assertThat(episodeStatuses(project)).containsExactlyInAnyOrder("CONFIRMED", "EXCLUDED");
 
         Integer calls = jdbc.sql("""
                         SELECT count(*) FROM app.ai_call_log
@@ -197,6 +199,63 @@ class ProjectApiTest extends ApiTestSupport {
 
         assertThat(episodeStatuses(project))
                 .containsExactlyInAnyOrder("SUPERSEDED", "SUPERSEDED", "CONFIRMED", "EXCLUDED");
+    }
+
+    /** 확정한 프로젝트 보기 = S05 읽기 모드 (기획서 v1.17 F2) */
+    @Test
+    void 확정한_프로젝트의_검토_화면은_읽기_모드다() throws Exception {
+        Long member = newMember();
+        Long project = splitProject(member);
+        ResultActions review = getJson(member, "/api/projects/{id}/review", project);
+        Long confirmed = readLong(review, "$.episodes[0].id");
+        Long excluded = readLong(review, "$.episodes[1].id");
+        postJson(member, null, "/api/projects/{id}/episodes/{e}/confirm", project, confirmed);
+        postJson(member, null, "/api/projects/{id}/episodes/{e}/exclude", project, excluded);
+        postJson(member, null, "/api/projects/{id}/confirm", project).andExpect(status().isOk());
+
+        // 확정한 사례만, 원문 하이라이트는 그대로 (웹은 #사례id 로 그 사례를 펼친다)
+        getJson(member, "/api/projects/{id}/review", project)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.reregistering").value(false))
+                .andExpect(jsonPath("$.episodes", hasSize(1)))
+                .andExpect(jsonPath("$.episodes[0].id").value(confirmed))
+                .andExpect(jsonPath("$.episodes[0].sourceSpans", hasSize(1)))
+                .andExpect(jsonPath("$.rawText").value(RAW_TEXT));
+
+        // 결정·수정 요청·다시 나누기·버전 바꾸기·사례 추가는 모두 막는다 (고치려면 재등록부터)
+        postJson(member, null, "/api/projects/{id}/episodes/{e}/undo", project, confirmed)
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.detail", containsString("다시 등록을 시작한 뒤")));
+        postJson(member, """
+                {"feedback": "다시 나눠 줘"}
+                """, "/api/projects/{id}/resplit", project).andExpect(status().isUnprocessableContent());
+        postJson(member, """
+                {"feedback": "짧게 고쳐 줘"}
+                """, "/api/projects/{id}/episodes/{e}/revision", project, confirmed)
+                .andExpect(status().isUnprocessableContent());
+        postJson(member, """
+                {"versionNo": 1}
+                """, "/api/projects/{id}/episodes/{e}/restore", project, confirmed)
+                .andExpect(status().isUnprocessableContent());
+        postJson(member, """
+                {"title": "직접 추가한 사례"}
+                """, "/api/projects/{id}/episodes", project).andExpect(status().isUnprocessableContent());
+
+        // 나갈 때 경고가 없으므로 "검토 결과 버리기"를 불러도 확정은 그대로다
+        postJson(member, null, "/api/projects/{id}/review/discard", project)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        // 사례 생성 평가는 확정 뒤에도 보고 바꿀 수 있다
+        getJson(member, "/api/projects/{id}/rating", project).andExpect(status().isNoContent());
+        putJson(member, """
+                {"score": 4, "comment": "사례 나누기가 깔끔했어요"}
+                """, "/api/projects/{id}/rating", project)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.score").value(4));
+        getJson(member, "/api/projects/{id}/rating", project)
+                .andExpect(jsonPath("$.comment").value("사례 나누기가 깔끔했어요"));
     }
 
     @Test

@@ -12,7 +12,14 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** S06 내 경험 라이브러리의 프로젝트 카드. 재등록 중이면 이전 확정 사례를 보여준다 (검색에 계속 쓰이므로) */
+/**
+ * S06 내 경험 라이브러리의 프로젝트 카드. 재등록 중이면 이전 확정 사례를 보여준다 (검색에 계속 쓰이므로).
+ *
+ * <p>웹은 {@code status}·{@code reregistering} 으로 상태별 카드를 그린다 (기획서 v1.17 S06):
+ * 확정("보기" → S05 읽기 모드, "수정" → 재등록 안내창 뒤 {@code POST /reopen} → S04),
+ * 재등록 중(이전 사례 사용 중, "이어서 수정하기" → S04), 초안("이어서 작성하기" → S04),
+ * 검토 중("검토 이어서 하기" → S05).
+ */
 @Service
 @Transactional(readOnly = true)
 public class ProjectLibraryQuery {

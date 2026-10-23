@@ -318,6 +318,25 @@ class ProjectTest {
         }
 
         @Test
+        void 확정한_프로젝트의_읽기_모드는_확정한_사례만_보여준다_v1_17() {
+            Project project = confirmedWithFirstEpisode();
+
+            assertThat(project.visibleEpisodes())
+                    .as("제외한 사례 B 는 저장도 되지 않으므로 읽기 모드에서 빼고 보여준다")
+                    .extracting(e -> e.current().getTitle())
+                    .containsExactly("사례 A");
+        }
+
+        @Test
+        void 검토_중_읽기_모드_전에는_결정한_사례도_함께_보여준다() {
+            Project project = reviewing();
+            project.excludeEpisode(project.reviewEpisodes().getLast().getId());
+
+            assertThat(project.visibleEpisodes()).extracting(e -> e.current().getTitle())
+                    .containsExactly("사례 A", "사례 B");
+        }
+
+        @Test
         void 다시_검토하기는_결정을_검토_중으로_되돌린다_P7_2() {
             Project project = reviewing();
             Episode episode = project.reviewEpisodes().getFirst();

@@ -3,7 +3,7 @@
 nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의 `nerdnam-api`에 해당합니다.
 인증, 도메인 로직, 데이터 저장(PostgreSQL + pgvector), AI 서버 호출 조율을 맡습니다.
 
-- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.16, `작업목록.md`, ADR-0001~0004
+- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.20, `작업목록.md`, ADR-0001~0004
 - 따르는 계약: `contracts-v0.1.0` (합의 후 기입)
 
 ## 빠른 시작
@@ -45,7 +45,7 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `POST /api/me/consents` | S01 | 이용약관·개인정보 수집 동의 기록 |
 | `DELETE /api/me` | 계정 메뉴 | 탈퇴 — 원본·벡터 즉시 삭제, 세션 종료 |
 | `GET /api/me/onboarding` | 공통 | 진행 상태 + `nextStep`(SKILLS/CAREER/PROJECT/LIBRARY) + `reviewingProjectId` |
-| `GET /api/me/library` | S06 | 통계·프로젝트 카드(확정 사례 한 줄 요약, 재등록 중 표시)·경력·기술 한 번에 |
+| `GET /api/me/library` | S06 | 통계·프로젝트 카드(확정 사례 한 줄 요약, `status`·`reregistering` 으로 상태별 카드)·경력·기술 한 번에 |
 | `GET /api/ai-jobs/{id}` | 공통 | AI 작업 상태 (`IN_PROGRESS/COMPLETED/FAILED`, `failureCode`, `resultId`) |
 | **기술스택·경력** | | |
 | `GET /api/skills?query=&category=` | S02 | 표준 기술 사전 자동완성 (별칭 포함) |
@@ -56,7 +56,7 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `POST /api/projects/{id}/skills` | S04 | 기술스택에 없는 기술 추가 + 연결 (`{"name","category"}`) |
 | `POST /api/projects/{id}/review/discard` | S04·S05 | 확정 전 검토 결과 버리기 (여러 번 불러도 안전) |
 | `POST /api/projects/{id}/split` | S04 | 재구성하기 → 202 |
-| `GET /api/projects/{id}/review` | S05 | 원문·답변·사례(모든 버전 포함)·진행 중인 작업 |
+| `GET /api/projects/{id}/review` | S05·S06 | 원문·답변·사례(모든 버전 포함)·진행 중인 작업. 확정한 프로젝트면 **읽기 모드**(`status = CONFIRMED` + 확정한 사례만, 아래 변경 API 는 422) |
 | `POST /api/projects/{id}/resplit` | S05 | 다시 나누기 (`{"feedback"}` 필수) → 202 |
 | `POST /api/projects/{id}/episodes/{e}/revision` | S05 | 수정 요청 (`{"feedback"}`) → 202 |
 | `POST /api/projects/{id}/episodes/{e}/clarifications/{key}/answer` | S05 | 확인 질문 답변 (`{"answer"}`) → 202 |
@@ -65,13 +65,13 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `POST /api/projects/{id}/episodes/{e}/restore` | S05 | 이 버전으로 바꾸기 (`{"versionNo"}`) |
 | `POST /api/projects/{id}/episodes/{e}/confirm`·`exclude`·`undo` | S05 | 사례 확정·제외·다시 검토하기 |
 | `POST /api/projects/{id}/confirm` | S05 | 프로젝트 확정 → RAG 등록 |
-| `POST /api/projects/{id}/reopen` | S06 | 재등록 시작 (초안으로, 이전 확정본은 다시 확정할 때까지 검색에 사용) |
+| `POST /api/projects/{id}/reopen` | S05·S06 | 재등록 시작 — 읽기 모드·라이브러리의 "수정"(웹이 안내창을 띄운 뒤). 초안으로 돌아가고 이전 확정본은 다시 확정할 때까지 검색에 사용 |
 | `GET/PUT /api/projects/{id}/rating` | S05 | 사례 생성 만족도 평가 (`{"score":1~5,"comment"}`, 없으면 GET 204) |
 | **공고·적합도 (S07·S08·S10)** | | |
 | `GET /api/job-postings` | S10 | 공고 목록 (상태: DRAFT/IN_PROGRESS/COMPLETED/FAILED, 충족 수) |
 | `POST /api/job-postings`, `GET/PUT/DELETE /api/job-postings/{id}` | S07 | 첫 임시 저장(id 발급)·조회·자동 저장(`version`)·삭제 |
 | `POST /api/job-postings/{id}/analyses` | S07·S08 | 적합도 분석하기 / 다시 시도 → 202. 입력 오류면 400 + `violations[]` |
-| `GET /api/job-postings/{id}/report` | S08 | 최근 분석 리포트: 충족 수, 한 줄 진단, 요건별 판정·근거 카드·갭 가이드 |
+| `GET /api/job-postings/{id}/report` | S08 | 최근 분석 리포트: 충족 수, 한 줄 진단, 요건별 판정·근거 카드(사례 근거는 `projectId` + `sourceId`로 S05 읽기 모드에서 펼침)·갭 가이드 |
 | `GET /api/fit-analyses/{id}` | S08 | 특정 분석 리포트 |
 | **작성 방향 (S09)** | | |
 | `GET /api/job-postings/{id}/guides` | S09 | 탭 5개 상태 |

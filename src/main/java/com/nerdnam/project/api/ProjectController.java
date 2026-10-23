@@ -109,6 +109,10 @@ public class ProjectController {
 
     // ------------------------------------------------------------------ S05 검토
 
+    /**
+     * 검토 화면 조회. 확정한 프로젝트도 같은 주소로 읽기 모드를 그린다 (기획서 v1.17):
+     * {@code status = CONFIRMED} + 확정한 사례만 돌려주고, 아래 변경 API 는 모두 422 다.
+     */
     @GetMapping("/{projectId}/review")
     public Review review(@CurrentMemberId Long memberId, @PathVariable Long projectId) {
         return decisions.review(memberId, projectId);

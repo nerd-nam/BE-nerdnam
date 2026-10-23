@@ -47,6 +47,12 @@ class GuideContentPolicyTest {
     void 탭_이름은_웹_주소_이름과_enum_이름_둘_다_받는다() {
         assertThat(GuideTab.parse("motive")).isEqualTo(GuideTab.MOTIVATION);
         assertThat(GuideTab.parse("SELF_INTRODUCTION")).isEqualTo(GuideTab.SELF_INTRODUCTION);
-        assertThat(GuideTab.CAREER_DESCRIPTION.aiName()).isEqualTo("career_description");
+    }
+
+    /** 기획서 v1.20: AI 서버 /guide 의 tab 은 웹 주소와 같은 값만 받는다 (다르면 422) */
+    @Test
+    void AI_서버에_보내는_탭_이름은_웹_주소_이름과_같다_v1_20() {
+        assertThat(GuideTab.values()).extracting(GuideTab::aiName)
+                .containsExactly("motive", "intro", "portfolio", "career", "image");
     }
 }
