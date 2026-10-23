@@ -11,6 +11,7 @@ import com.nerdnam.member.domain.MemberConsentRepository;
 import com.nerdnam.member.domain.MemberRepository;
 import com.nerdnam.member.domain.SocialAccount;
 import com.nerdnam.member.domain.SocialAccountRepository;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +37,8 @@ public class MemberService {
     }
 
     /** @param consentRequired 지금 약관 버전에 아직 동의하지 않음 → 웹이 동의 화면을 띄운다 */
-    public record MemberView(Long id, String displayName, String email, boolean consentRequired, String termsVersion) {
+    public record MemberView(Long id, @Nullable String displayName, @Nullable String email, boolean consentRequired,
+                             String termsVersion) {
     }
 
     @Transactional(readOnly = true)

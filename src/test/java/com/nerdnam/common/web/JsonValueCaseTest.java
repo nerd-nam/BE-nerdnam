@@ -74,6 +74,29 @@ class JsonValueCaseTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.affiliation").value("personal"));
     }
 
+    /**
+     * 응답은 값이 null 이어도 키를 남긴다. 그래서 계약은 모든 응답 필드를 required 로 적고,
+     * 그중 **null 이 될 수 있는 것만** 따로 표시한다 (SPEC PR #47 FE 의견 2).
+     */
+    @Test
+    void 분석하지_않은_공고도_키는_모두_주고_없는_값만_null이다() throws Exception {
+        Long member = newMember();
+        readLong(postJson(member, """
+                {"companyName": "회사", "positionName": "백엔드"}
+                """, "/api/job-postings"), "$.id");
+
+        getJson(member, "/api/job-postings")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(jsonPath("$[0].companyName").value("회사"))
+                .andExpect(jsonPath("$[0].status").value("draft"))
+                .andExpect(jsonPath("$[0].updatedAt").exists())
+                // 분석한 적이 없어 비는 값들 — 키는 있고 값이 null 이다
+                .andExpect(jsonPath("$[0].analysisId").doesNotExist())
+                .andExpect(jsonPath("$[0].analyzedAt").doesNotExist())
+                .andExpect(jsonPath("$[0].requiredMet").doesNotExist());
+    }
+
     @Test
     void 오류_코드는_대문자_그대로다() throws Exception {
         Long member = newMember();

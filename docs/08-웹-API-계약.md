@@ -4,6 +4,30 @@
 
 **공용 계약 검토 중: [SPEC PR #47](https://github.com/nerd-nam/SPEC-nerdnam/pull/47)** (2026-10-23 올림). 이 PR 에 C-03 파일과 C-02 화면별 API 목록의 엔드포인트·공통 결정(인증·오류 형식·AI 작업 폴링·S01 동의 순서·S08 분석 기록과 삭제·재등록 중 근거·S09 `content` 연결·다시 만들기 피드백·S04 재구성 중 삭제)이 함께 들어 있다. 세 팀 검토 대상이라 임의로 머지하지 않는다. 합의되면 SPEC 의 `contracts/web-api.openapi.yaml` 을 기준으로 FE 클라이언트를 만든다.
 
+## FE 검토 반영 (SPEC PR #47, 2026-10-23)
+
+FE가 C-03 v0.1.0을 보고 요청한 3가지를 모두 고쳤다. 계약을 다시 내보냈다(v0.1.1).
+
+| FE 요청 | 고친 것 |
+| --- | --- |
+| 작성 방향 탭 이름이 요청 경로(`motive`)와 응답(`motivation`)으로 갈린다 | `GuideTab.path()`에 `@JsonValue`를 붙여 **응답도 `motive`·`intro`·`portfolio`·`career`·`image`**로 나간다. 받을 때는 둘 다 받는다(`@JsonCreator` = `parse()`). AI 계약(C-04)과도 같은 값이다 |
+| 꼭 있는 값도 모두 null 가능이다 | 응답은 **`@Nullable`(jspecify)로 표시한 필드만** null이 될 수 있다. 표시는 main 코드의 record 선언에 있어 읽기만 해도 알 수 있다. `id`·이름·`status`·목록·`requestedAt` 같은 값은 이제 null이 아니다 |
+| 스키마 이름이 Java 전체 클래스 이름이다 | **짧은 이름**(`FitReportView`)으로 내보낸다. 어느 Java 타입인지는 `x-java-class` 확장에 남긴다 — 계약 테스트가 이 값으로 실제 enum·null 여부를 대조한다. 웹의 타입 생성기는 `x-`를 무시한다 |
+
+응답은 값이 null이어도 **키를 남긴다**. 그래서 계약은 응답 필드를 모두 `required`로 적고, 그중 null이 될 수 있는 것만 `anyOf: [..., null]`로 표시한다. 키가 아예 없는 것과 값이 null인 것을 구분하지 않아도 된다.
+
+`tab`과 `path`는 이제 **같은 값**이다. `path`를 지울지는 FE와 정한다(SPEC PR #47 답글에서 물었다).
+
+### 고정한 테스트
+
+| 테스트 | 무엇을 막나 |
+| --- | --- |
+| `WebApiContractTest.작성_방향_탭은_요청_경로와_응답이_같은_이름이다` | 응답 탭 이름이 다시 갈리는 것 |
+| `WebApiContractTest.응답의_필수_필드는_표시한_것만_null이_된다` | `@Nullable` 표시와 계약의 null 허용이 어긋나는 것(계약 손수정 포함) |
+| `WebApiContractTest.스키마_이름은_짧고_자바_타입을_확장으로_남긴다` | 이름이 FQCN으로 돌아가는 것, `x-java-class`가 빠지는 것 |
+| `WritingGuideApiTest` | 실제 응답의 `tab`·`path`가 `motive`인지 |
+| `JsonValueCaseTest.분석하지_않은_공고도_키는_모두_주고_없는_값만_null이다` | 실제 응답에서 "키는 있고 값만 null"이 깨지는 것 |
+
 ## 계약 갱신과 테스트
 
 ```bash

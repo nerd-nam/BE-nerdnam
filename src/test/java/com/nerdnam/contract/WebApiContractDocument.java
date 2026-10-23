@@ -37,12 +37,13 @@ final class WebApiContractDocument {
         result.metadata();
         result.schemas();
         result.operations(mappings);
+        result.shortenSchemaNames();   // FQCN 으로 하는 일이 모두 끝난 뒤에
         return result.document;
     }
 
     private void metadata() {
         document.put("openapi", "3.1.0");
-        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.0")
+        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.1")
                 .put("description", """
                         C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
                         JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -54,6 +55,10 @@ final class WebApiContractDocument {
                         이때 내 정보 조회·동의·탈퇴·로그아웃·CSRF 준비만 가능하다.
                         AI 작업은 202 + jobId를 받고 GET /api/ai-jobs/{jobId}를 폴링한다. 웹으로 SSE를 보내지 않는다.
                         예시는 형식 확인용 가상 데이터이며 실제 회원·작업 id가 아니다.
+                        응답은 값이 null이어도 키를 남기므로 모든 응답 필드가 required다.
+                        그중 값이 null일 수 있는 것만 anyOf로 null을 함께 적는다. 꼭 있는 값에는 null이 없다.
+                        스키마 이름은 짧은 Java 타입 이름이고, 원래 타입은 x-java-class에 남긴다(웹은 x- 확장을 무시한다).
+                        작성 방향 탭은 요청 경로와 응답이 같은 이름이다: motive·intro·portfolio·career·image.
                         """);
         document.putArray("servers").addObject().put("url", "/").put("description", "BE 서버의 기준 주소");
         ObjectNode security = ((ObjectNode) document.path("components")).putObject("securitySchemes");
@@ -89,11 +94,14 @@ final class WebApiContractDocument {
                 } catch (NoSuchFieldException e) {
                     throw new IllegalStateException("record 필드를 찾지 못했어요: " + name, e);
                 }
-                // 응답은 null도 JSON에 나타난다. 요청은 필수 검증이 없는 참조 타입에 null을 허용한다.
-                if (!field.getType().isPrimitive() && (!request || !required.contains(field.getName()))) {
-                    ObjectNode nullable = json.createObjectNode();
-                    nullable.putArray("anyOf").add(property.deepCopy()).addObject().put("type", "null");
-                    ((ObjectNode) schema.path("properties")).set(field.getName(), nullable);
+                // 응답은 키가 항상 있지만(required) 값이 null일 수 있는 것만 null을 허용한다 — 웹 타입이
+                // 전부 "없을 수도 있음"이 되지 않게 @Nullable 로 표시한 것만 (C-03 검토, SPEC PR #47 FE 의견 2).
+                // 요청은 필수 검증이 없는 참조 타입에 null을 허용한다.
+                boolean nullable = request ? !required.contains(field.getName()) : isNullable(field);
+                if (!field.getType().isPrimitive() && nullable) {
+                    ObjectNode orNull = json.createObjectNode();
+                    orNull.putArray("anyOf").add(property.deepCopy()).addObject().put("type", "null");
+                    ((ObjectNode) schema.path("properties")).set(field.getName(), orNull);
                 }
                 if (!request && !required.contains(field.getName())) {
                     required.add(field.getName());
@@ -298,6 +306,60 @@ final class WebApiContractDocument {
                 default -> "예시";
             });
         };
+    }
+
+    /** jspecify {@code @Nullable}(TYPE_USE)을 붙인 응답 필드만 null이 될 수 있다 */
+    private static boolean isNullable(RecordComponent field) {
+        for (var annotation : field.getAnnotatedType().getAnnotations()) {
+            if (annotation.annotationType().getSimpleName().equals("Nullable")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 스키마 이름을 FQCN 에서 짧은 이름으로 바꾼다 (FE 가 타입을 자동 생성할 때 그 이름을 쓴다).
+     * 이름만으로는 어느 Java 타입인지 알 수 없어 {@code x-java-class} 로 남긴다 — 계약 테스트가 이 값으로
+     * 실제 enum·필수 목록을 대조한다. 웹의 생성기는 {@code x-} 확장을 무시한다.
+     */
+    private void shortenSchemaNames() {
+        Map<String, String> renamed = new java.util.LinkedHashMap<>();
+        for (String name : new ArrayList<>(schemas.propertyNames())) {
+            Class<?> type = recordType(name);
+            if (type == null) {
+                continue;
+            }
+            String simple = name.substring(name.lastIndexOf('.') + 1);
+            if (renamed.containsValue(simple)) {
+                throw new IllegalStateException("스키마 이름이 겹쳐요: " + simple + " (" + name + ")");
+            }
+            renamed.put(name, simple);
+        }
+        renamed.forEach((fqcn, simple) -> {
+            ObjectNode schema = (ObjectNode) schemas.path(fqcn);
+            schema.put("x-java-class", recordType(fqcn).getName());
+            schemas.set(simple, schema);
+            schemas.remove(fqcn);
+        });
+        rewriteReferences(document, renamed);
+    }
+
+    private static void rewriteReferences(JsonNode node, Map<String, String> renamed) {
+        if (node instanceof ObjectNode object) {
+            JsonNode reference = object.path("$ref");
+            if (reference.isString()) {
+                String value = reference.asString();
+                String prefix = "#/components/schemas/";
+                if (value.startsWith(prefix)) {
+                    String target = renamed.get(value.substring(prefix.length()));
+                    if (target != null) {
+                        object.put("$ref", prefix + target);
+                    }
+                }
+            }
+        }
+        node.forEach(child -> rewriteReferences(child, renamed));
     }
 
     private ObjectNode property(String schemaName, String name) {

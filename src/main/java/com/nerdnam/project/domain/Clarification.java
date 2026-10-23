@@ -1,5 +1,7 @@
 package com.nerdnam.project.domain;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * 확인 필요 질문 (기획서의 unverified). AI 가 원문에서 찾지 못해 사용자에게 묻는다.
  *
@@ -8,5 +10,5 @@ package com.nerdnam.project.domain;
  * @param question 화면에 보여줄 질문
  * @param example  입력 예시 (없을 수 있음)
  */
-public record Clarification(String key, String field, String question, String example) {
+public record Clarification(String key, @Nullable String field, String question, @Nullable String example) {
 }
