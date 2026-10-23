@@ -14,11 +14,11 @@ import com.nerdnam.matching.domain.FitAnalysis;
 import com.nerdnam.matching.domain.FitAnalysisRepository;
 import com.nerdnam.matching.domain.FitReport;
 import com.nerdnam.matching.domain.MatchEvidence;
+import com.nerdnam.project.application.ProjectEvidenceQuery;
+import com.nerdnam.project.application.ProjectEvidenceQuery.Reference;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +30,13 @@ public class FitReportQuery {
     private final FitAnalysisRepository analyses;
     private final JobPostingService postings;
     private final AiJobs aiJobs;
-    private final JdbcClient jdbc;
+    private final ProjectEvidenceQuery projects;
 
-    public FitReportQuery(FitAnalysisRepository analyses, JobPostingService postings, AiJobs aiJobs, JdbcClient jdbc) {
+    public FitReportQuery(FitAnalysisRepository analyses, JobPostingService postings, AiJobs aiJobs, ProjectEvidenceQuery projects) {
         this.analyses = analyses;
         this.postings = postings;
         this.aiJobs = aiJobs;
-        this.jdbc = jdbc;
+        this.projects = projects;
     }
 
     /** 공고의 가장 최근 분석 (S08 을 열 때). 분석한 적이 없으면 404 */
@@ -77,11 +77,12 @@ public class FitReportQuery {
                     a.getFailureCode(), a.getRequestedAt(), a.getCompletedAt(), null, null, null, List.of(), running);
         }
         FitReport report = a.report();
-        Map<Long, Long> episodeProjects = episodeProjects(a);
+        Map<Long, Reference> episodes = projects.episodes(a.getMemberId(), sourceIds(a, EvidenceSourceType.EPISODE));
+        Map<Long, Reference> summaries = projects.projects(a.getMemberId(), sourceIds(a, EvidenceSourceType.PROJECT_SUMMARY));
         List<MatchView> matches = a.getMatches().stream()
                 .map(m -> new MatchView(m.getId(), m.getRequirementId(), lower(m.getRequirementType()), m.getRequirementText(),
                         m.getSkills(), m.getMinYears(), m.getRuleVerdict(), m.getLlmVerdict(), m.getFinalVerdict(),
-                        m.getReason(), m.getEvidences().stream().map(e -> evidence(e, episodeProjects)).toList(),
+                        m.getReason(), m.getEvidences().stream().map(e -> evidence(e, episodes, summaries)).toList(),
                         m.gapGuide()))
                 .toList();
         return new FitReportView(a.getId(), posting.id(), posting.companyName(), posting.positionName(), a.getStatus(),
@@ -94,36 +95,22 @@ public class FitReportQuery {
         return value == null ? null : value.toLowerCase(java.util.Locale.ROOT);
     }
 
-    private static EvidenceView evidence(MatchEvidence e, Map<Long, Long> episodeProjects) {
-        Long projectId = switch (e.getSourceType()) {
-            case EPISODE -> episodeProjects.get(e.getSourceId());
-            case PROJECT_SUMMARY -> e.getSourceId();
+    private static EvidenceView evidence(MatchEvidence e, Map<Long, Reference> episodes, Map<Long, Reference> summaries) {
+        Reference project = switch (e.getSourceType()) {
+            case EPISODE -> episodes.get(e.getSourceId());
+            case PROJECT_SUMMARY -> summaries.get(e.getSourceId());
             default -> null;
         };
         return new EvidenceView(e.getRankNo(), e.getChunkId(), e.getSourceType(), e.getSourceId(), e.getSourceVersion(),
-                projectId, e.label(), e.getSnippet());
+                project == null ? null : project.projectId(), project != null && project.reregistering(), e.label(), e.getSnippet());
     }
 
-    /** 사례 근거 → 그 사례의 프로젝트 id (근거 카드에서 S05 로 갈 때). 이 회원의 프로젝트만 */
-    private Map<Long, Long> episodeProjects(FitAnalysis a) {
-        List<Long> episodeIds = a.getMatches().stream()
+    private static List<Long> sourceIds(FitAnalysis a, EvidenceSourceType type) {
+        return a.getMatches().stream()
                 .flatMap(m -> m.getEvidences().stream())
-                .filter(e -> e.getSourceType() == EvidenceSourceType.EPISODE)
+                .filter(e -> e.getSourceType() == type)
                 .map(MatchEvidence::getSourceId)
                 .distinct()
                 .toList();
-        Map<Long, Long> result = new HashMap<>();
-        if (episodeIds.isEmpty()) {
-            return result;
-        }
-        jdbc.sql("""
-                        SELECT e.id, e.project_id FROM app.episode e JOIN app.project p ON p.id = e.project_id
-                        WHERE e.id IN (:ids) AND p.member_id = :m
-                        """)
-                .param("ids", episodeIds)
-                .param("m", a.getMemberId())
-                .query((rs, n) -> result.put(rs.getLong(1), rs.getLong(2)))
-                .list();
-        return result;
     }
 }
