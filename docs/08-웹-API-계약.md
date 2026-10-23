@@ -1,0 +1,58 @@
+# 08. 웹 API 계약 (C-03 v0.1.0)
+
+기준은 기획서 v1.31이다. [계약 파일](../contracts/web-api.openapi.yaml)은 실제 컨트롤러의 55개 작업을 포함한다. 공용 계약은 SPEC PR에서 검토하고, 합의 후 SPEC의 `contracts/web-api.openapi.yaml`을 기준으로 FE 클라이언트를 만든다.
+
+## 계약 갱신과 테스트
+
+```bash
+./gradlew exportWebApiContract
+./gradlew test
+```
+
+`WebApiContractTest`는 현재 컨트롤러와 저장한 계약의 일치, 경로 누락·잘못된 참조·인증 주입값 노출, 실제 JSON 매퍼의 enum 값을 검사한다. 변경할 때 생성된 diff를 검토하고 SPEC에도 같은 파일을 올린다. 계약 테스트 자체가 모든 API의 동작을 검증하는 것은 아니다. 각 도메인·API 테스트가 실제 상태 변화와 오류를 확인한다.
+
+문서 생성에 쓰는 [springdoc](https://springdoc.org/)은 테스트 의존성이다. 운영 서버에 문서용 엔드포인트를 추가하지 않는다. 예시는 형식 확인용 가상 데이터다. 임시 스크립트로 검증을 대체하지 않고 저장소의 테스트로 확인한다.
+
+## 로그인과 동의
+
+1. 웹에서 현재 개인정보 처리방침·약관을 보여주고 직접 체크하게 한다.
+2. `/oauth2/authorization/google` 또는 `/oauth2/authorization/kakao`로 이동한다.
+3. 돌아오면 `GET /api/me`로 `consentRequired`와 `termsVersion`을 확인한다.
+4. `GET /api/auth/csrf`의 `headerName`·`token`을 받고, 동의한 사용자만 본문 없이 `POST /api/me/consents`를 보낸다. 쿠키도 함께 보낸다.
+5. 현재 버전 동의 전에는 서비스 API가 `403 CONSENT_REQUIRED`를 준다. 내 정보 조회·동의·탈퇴·로그아웃·CSRF 준비는 가능하다. 이전 약관에 동의한 회원도 현재 버전 재동의가 필요하다.
+
+인증은 `SESSION` 쿠키다. 웹 요청은 `credentials: include`, 변경 요청은 `X-XSRF-TOKEN` 헤더를 사용한다. 로그인·로그아웃 뒤에는 CSRF 토큰을 다시 받는다. `X-Member-Id`는 로컬 개발 전용이다.
+
+## FE 연결 규칙
+
+| 상황 | 응답과 처리 |
+| --- | --- |
+| AI 요청 접수 | `202 + jobId` → `GET /api/ai-jobs/{jobId}` 폴링. 완료 후 대상 조회 |
+| 같은 대상 작업 중 | `409 AI_JOB_RUNNING + runningJobId`. 기존 작업을 조회 |
+| 값 표기 | 필드는 camelCase, enum 값은 소문자. 업무 오류의 `title`만 대문자 |
+| 사용 중인 기술·경력 삭제 | `409 IN_USE + usages[{type,id,name}]`. 사용처를 보여주고 먼저 연결 해제 |
+| 분석 기록 | `GET /api/job-postings/{postingId}/analyses`, 최신순. 고른 `analysisId`는 `/api/fit-analyses/{analysisId}`로 조회 |
+| 재등록 중 근거 | `reregistering=true`이면 S06 프로젝트 카드로 이동 |
+| 삭제한 근거 | `deleted=true`, `projectId=null`. 이름과 "삭제된 경험"만 표시하고 원본 이동을 숨김. 리포트의 `snippet`도 null |
+| 프로젝트 삭제 | 모든 상태에서 가능. 해당 프로젝트 재구성 중이면 409. 이전 분석·작성 방향은 유지 |
+| 미래 월 | 경력·프로젝트의 시작·종료 월 모두 한국 시간의 이번 달까지. 미래 월은 400 |
+| 탭 다시 만들기 | 첫 생성은 피드백 생략 가능. 같은 분석에서 두 번째 생성부터 공백 아닌 `feedback` 필수, 없으면 400 |
+
+S09의 `content`는 C-04 탭별 내용을 보존한다. `sources`의 청크 id를 같은 응답의 `citations[].chunkId`와 연결하면 이름·원본 id·삭제 여부를 얻는다. `coverage.requirement_id`는 S08의 `matches[].requirementId`와 연결하면 요건 문구·필수/우대 구분을 얻는다. `content` 안에 원본 정보를 중복 삽입하지 않는다.
+
+## 이번 이슈 검토 결과
+
+| BE 이슈 | 처리 |
+| --- | --- |
+| #4 | C-03 계약 생성·대조 테스트. 공고 목록 상태·분석 실패 코드와 검색 조건의 소문자 값 정리 |
+| #5 | PR #10으로 이미 정리됨. 기본 브랜치 `main`, PR #13 구현 포함 확인 |
+| #6 | 근거에 현재 재등록 여부 제공. 이전 분석에도 반영 |
+| #7 | 분석 기록 API는 이미 구현됨. 계약에 명시하고 다른 회원 조회 404 검증 추가 |
+| #8 | 빈 피드백 거부는 이미 구현됨. 공백만 보낸 요청도 400 검증 추가 |
+| #9 | 현재 동의 전 서비스 접근 제한과 CSRF 준비 API. 실제 쿠키·헤더 및 재동의 테스트 |
+| #12 | AI 504 → TIMEOUT, 재시도 없음 |
+| #14 | 프로젝트 삭제, 청크 즉시 제거, 이전 근거 이름·삭제 표시 보존 |
+| #15 | 미래 월을 생성·수정에서 거부 |
+| #16 | 생성 모델 상태와 무관하게 embedding ready이면 대기 청크 재처리 |
+
+전체 `./gradlew test` 255개 통과. 실제 AI 서버 연결·검색 가중치 합의(D-12)·결과 캐시는 다음 작업으로 남는다.

@@ -3,8 +3,8 @@
 nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의 `nerdnam-api`에 해당합니다.
 인증, 도메인 로직, 데이터 저장(PostgreSQL + pgvector), AI 서버 호출 조율을 맡습니다.
 
-- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.25, `작업목록.md`, ADR-0001~0004
-- 따르는 계약: `contracts/api-ai.openapi.yaml` v0.1 (C-04, 구현과 대조 완료 → `docs/06`). `web-api.openapi.yaml`(C-03)은 아직
+- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.31, `작업목록.md`, ADR
+- 계약: C-04 v0.2.1은 [AI 계약 테스트](docs/06-AI-계약-초안.md)로 대조한다. C-03 v0.1.0은 [웹 계약 파일](contracts/web-api.openapi.yaml)과 [연결 안내](docs/08-웹-API-계약.md)를 보고 SPEC PR에서 함께 검토한다.
 
 ## 빠른 시작
 
@@ -43,6 +43,7 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | 메서드·경로 | 화면 | 내용 |
 | --- | --- | --- |
 | **공통** | | |
+| `GET /api/auth/csrf` | 공통 | 변경 요청에 쓸 CSRF 토큰·쿠키 준비 |
 | `GET /api/me` | 머리글 | 내 정보 + `consentRequired`(지금 약관에 동의 전) |
 | `POST /api/me/consents` | S01 | 이용약관·개인정보 수집 동의 기록 |
 | `DELETE /api/me` | 계정 메뉴 | 탈퇴 — 원본·벡터 즉시 삭제, 세션 종료 |
@@ -55,6 +56,7 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `GET/POST /api/me/careers`, `PUT/DELETE /api/me/careers/{id}` | S03 | 경력. 수정은 `version` 필수, 삭제는 프로젝트가 연결돼 있으면 409 |
 | **프로젝트 (S04·S05)** | | |
 | `GET/POST /api/projects`, `GET/PUT /api/projects/{id}` | S04 | 목록·빈 초안 만들기·상세·자동 임시 저장(`version`, 초안일 때만) |
+| `DELETE /api/projects/{id}` | S04 | 모든 상태 삭제. 재구성 중에는 409. 청크 즉시 삭제, 이전 분석은 이름·삭제 표시 유지 |
 | `POST /api/projects/{id}/skills` | S04 | 기술스택에 없는 기술 추가 + 연결 (`{"name","category"}`) |
 | `POST /api/projects/{id}/review/discard` | S04·S05 | 확정 전 검토 결과 버리기 (여러 번 불러도 안전) |
 | `POST /api/projects/{id}/split` | S04 | 재구성하기 → 202 |

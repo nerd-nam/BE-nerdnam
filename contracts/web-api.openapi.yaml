@@ -1,0 +1,5156 @@
+openapi: "3.1.0"
+info:
+  title: "nerdnam 웹 API"
+  version: "0.1.0"
+  description: |
+    C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
+    JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
+    날짜·시각은 ISO 8601, 월은 YYYY-MM. ID는 정수다. 없는 자료와 남의 자료는 모두 404다.
+    인증은 SESSION 쿠키이며 웹은 credentials: include로 요청한다.
+    GET /api/auth/csrf로 토큰·쿠키를 받은 뒤 변경 요청에는 X-XSRF-TOKEN 헤더를 보낸다.
+    로그인·로그아웃 후 CSRF 토큰을 다시 받는다. X-Member-Id는 로컬 개발 전용이며 이 계약의 인증 수단이 아니다.
+    현재 약관 미동의 상태는 403 CONSENT_REQUIRED와 termsVersion을 준다.
+    이때 내 정보 조회·동의·탈퇴·로그아웃·CSRF 준비만 가능하다.
+    AI 작업은 202 + jobId를 받고 GET /api/ai-jobs/{jobId}를 폴링한다. 웹으로 SSE를 보내지 않는다.
+    예시는 형식 확인용 가상 데이터이며 실제 회원·작업 id가 아니다.
+servers:
+- url: "/"
+  description: "BE 서버의 기준 주소"
+paths:
+  /api/ai-jobs/{jobId}:
+    get:
+      operationId: "AiJobController_get"
+      parameters:
+      - in: "path"
+        name: "jobId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.application.AiJobView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.application.AiJobView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "ai-job-controller"
+      summary: "AI 작업 — 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/auth/csrf:
+    get:
+      operationId: "AuthController_csrf"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.member.api.AuthController.CsrfView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.member.api.AuthController.CsrfView"
+          description: "OK"
+      tags:
+      - "auth-controller"
+      summary: "인증 — CSRF 토큰"
+      security: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/fit-analyses/{analysisId}:
+    get:
+      operationId: "FitAnalysisController_get"
+      parameters:
+      - in: "path"
+        name: "analysisId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.matching.application.FitReportView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "fit-analysis-controller"
+      summary: "분석·리포트 — 조회"
+      security:
+      - cookieSession: []
+      description: "근거의 deleted가 true면 이름만 표시하고 원본 이동을 막는다. reregistering이 true인 프로젝트·사례는 S06 프로젝트 카드로 이동한다. false면 S05 읽기 모드로 이동한다. 기술·경력 근거는 S06으로 이동한다. status가 completed가 아니면 집계·진단은 null, matches는 빈 배열이다."
+  /api/job-postings:
+    get:
+      operationId: "FitAnalysisController_list"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/com.nerdnam.matching.application.PostingListQuery.PostingSummary"
+              examples:
+                sample:
+                  $ref: "#/components/examples/FitAnalysisController_listResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "fit-analysis-controller"
+      summary: "분석·리포트 — 목록"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    post:
+      operationId: "JobPostingController_create"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.jd.api.JobPostingController.PostingRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.jd.api.JobPostingController.PostingRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.jd.application.JobPostingView"
+          description: "Created"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "job-posting-controller"
+      summary: "공고 — 등록"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/job-postings/{postingId}:
+    delete:
+      operationId: "JobPostingController_delete"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "204":
+          description: "No Content"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "job-posting-controller"
+      summary: "공고 — 삭제"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    get:
+      operationId: "JobPostingController_get"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.jd.application.JobPostingView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "job-posting-controller"
+      summary: "공고 — 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    put:
+      operationId: "JobPostingController_update"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.jd.api.JobPostingController.PostingRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.jd.api.JobPostingController.PostingRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.jd.application.JobPostingView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "job-posting-controller"
+      summary: "공고 — 수정"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/job-postings/{postingId}/analyses:
+    get:
+      operationId: "FitAnalysisController_history"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportQuery.AnalysisSummary"
+              examples:
+                sample:
+                  $ref: "#/components/examples/FitAnalysisController_historyResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "fit-analysis-controller"
+      summary: "분석·리포트 — 분석 기록"
+      security:
+      - cookieSession: []
+      description: "이 공고의 분석 기록을 requestedAt·analysisId 내림차순으로 준다. 없으면 빈 배열이다. analysisId로 이전 리포트를 조회한다."
+    post:
+      operationId: "FitAnalysisController_start"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
+          description: "Accepted"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "fit-analysis-controller"
+      summary: "분석·리포트 — 분석 시작"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "입력 검증 후 새 분석을 쌓는다. 기존 분석을 덮어쓰지 않는다. 완료되면 작업 resultId가 analysisId다."
+  /api/job-postings/{postingId}/guides:
+    get:
+      operationId: "WritingGuideController_overview"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.Overview"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.guide.application.GuideViews.Overview"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "writing-guide-controller"
+      summary: "작성 방향 — 탭 상태 목록"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/job-postings/{postingId}/guides/rating:
+    get:
+      operationId: "RatingController_guideRating"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
+          description: "OK"
+        "204":
+          description: "평가 없음, 응답 본문 없음"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "rating-controller"
+      summary: "만족도 평가 — 작성 방향 평가 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    put:
+      operationId: "RatingController_rateGuide"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.feedback.api.RatingController.RatingRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.feedback.api.RatingController.RatingRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "rating-controller"
+      summary: "만족도 평가 — 작성 방향 평가 저장"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/job-postings/{postingId}/guides/{tab}:
+    get:
+      operationId: "WritingGuideController_get"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "tab"
+        required: true
+        schema:
+          type: "string"
+          enum:
+          - "motive"
+          - "intro"
+          - "portfolio"
+          - "career"
+          - "image"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.Guide"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.guide.application.GuideViews.Guide"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "writing-guide-controller"
+      summary: "작성 방향 — 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    post:
+      operationId: "WritingGuideController_generate"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "tab"
+        required: true
+        schema:
+          type: "string"
+          enum:
+          - "motive"
+          - "intro"
+          - "portfolio"
+          - "career"
+          - "image"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.guide.api.WritingGuideController.GenerateRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.guide.api.WritingGuideController.GenerateRequest"
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
+          description: "Accepted"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "writing-guide-controller"
+      summary: "작성 방향 — 탭 생성·재생성"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "최신 완료 분석의 탭을 만든다. 첫 생성은 feedback을 생략할 수 있다. 같은 분석에서 두 번째 생성부터는 실패 뒤 다시 요청할 때도 공백 아닌 feedback이 필수이며 없으면 400이다. 새 분석이면 새 탭으로 만들므로 첫 생성 규칙을 적용한다. 같은 탭 진행 중에는 409와 runningJobId를 준다."
+  /api/job-postings/{postingId}/report:
+    get:
+      operationId: "FitAnalysisController_latest"
+      parameters:
+      - in: "path"
+        name: "postingId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.matching.application.FitReportView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "fit-analysis-controller"
+      summary: "분석·리포트 — 최신 리포트"
+      security:
+      - cookieSession: []
+      description: "근거의 deleted가 true면 이름만 표시하고 원본 이동을 막는다. reregistering이 true인 프로젝트·사례는 S06 프로젝트 카드로 이동한다. false면 S05 읽기 모드로 이동한다. 기술·경력 근거는 S06으로 이동한다. status가 completed가 아니면 집계·진단은 null, matches는 빈 배열이다."
+  /api/me:
+    delete:
+      operationId: "MeController_withdraw"
+      responses:
+        "204":
+          description: "No Content"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "me-controller"
+      summary: "내 정보·동의 — 탈퇴"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "현재 약관 미동의 상태에서도 조회·탈퇴할 수 있다. consentRequired가 true면 동의 안내를 먼저 보여주며, 서비스 API는 403이다."
+    get:
+      operationId: "MeController_me"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.member.application.MemberService.MemberView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.member.application.MemberService.MemberView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "me-controller"
+      summary: "내 정보·동의 — 조회"
+      security:
+      - cookieSession: []
+      description: "현재 약관 미동의 상태에서도 조회·탈퇴할 수 있다. consentRequired가 true면 동의 안내를 먼저 보여주며, 서비스 API는 403이다."
+  /api/me/careers:
+    get:
+      operationId: "CareerController_list"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/CareerController_listResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "career-controller"
+      summary: "경력 — 목록"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    post:
+      operationId: "CareerController_create"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerResponse"
+          description: "Created"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "career-controller"
+      summary: "경력 — 등록"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/me/careers/{careerId}:
+    delete:
+      operationId: "CareerController_delete"
+      parameters:
+      - in: "path"
+        name: "careerId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "204":
+          description: "No Content"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "career-controller"
+      summary: "경력 — 삭제"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    put:
+      operationId: "CareerController_update"
+      parameters:
+      - in: "path"
+        name: "careerId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "career-controller"
+      summary: "경력 — 수정"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/me/consents:
+    post:
+      operationId: "MeController_agree"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.member.application.MemberService.MemberView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.member.application.MemberService.MemberView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "me-controller"
+      summary: "내 정보·동의 — 동의 기록"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "로그인 전에 동의한 사용자만 로그인 직후 호출한다. 기존 사용자의 약관 버전이 바뀌었으면 현재 약관을 보여주고 다시 동의받은 뒤 호출한다. 본문 없이 현재 termsVersion으로 두 동의 항목을 기록한다. 중복 호출해도 같은 기록을 추가하지 않는다."
+  /api/me/library:
+    get:
+      operationId: "LibraryController_library"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Library"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.library.LibraryController.Library"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "library-controller"
+      summary: "라이브러리 — 전체 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/me/onboarding:
+    get:
+      operationId: "LibraryController_onboarding"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Onboarding"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.library.LibraryController.Onboarding"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "library-controller"
+      summary: "라이브러리 — 온보딩 진행 상태"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/me/skills:
+    get:
+      operationId: "UserSkillController_list"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/UserSkillController_listResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "user-skill-controller"
+      summary: "내 기술스택 — 목록"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    post:
+      operationId: "UserSkillController_add"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+          description: "이미 등록한 기술"
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+          description: "새 기술 등록"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "user-skill-controller"
+      summary: "내 기술스택 — 추가"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/me/skills/{userSkillId}:
+    delete:
+      operationId: "UserSkillController_delete"
+      parameters:
+      - in: "path"
+        name: "userSkillId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "204":
+          description: "No Content"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "user-skill-controller"
+      summary: "내 기술스택 — 삭제"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    patch:
+      operationId: "UserSkillController_changeLevel"
+      parameters:
+      - in: "path"
+        name: "userSkillId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "user-skill-controller"
+      summary: "내 기술스택 — 숙련도 수정"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects:
+    get:
+      operationId: "ProjectController_list"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Summary"
+              examples:
+                sample:
+                  $ref: "#/components/examples/ProjectController_listResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 목록"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    post:
+      operationId: "ProjectController_create"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.DraftRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.DraftRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
+          description: "Created"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 등록"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}:
+    delete:
+      operationId: "ProjectController_delete"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "204":
+          description: "No Content"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 삭제"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "초안·검토·확정·재등록 중 모두 삭제할 수 있다. 해당 프로젝트 재구성 작업 중에는 409 AI_JOB_RUNNING과 runningJobId를 준다. 청크·벡터도 같은 트랜잭션에서 삭제한다. 이전 리포트·작성 방향은 이름과 deleted=true 표시를 남긴다."
+    get:
+      operationId: "ProjectController_get"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    put:
+      operationId: "ProjectController_update"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.DraftRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.DraftRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 수정"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/confirm:
+    post:
+      operationId: "ProjectController_confirm"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 프로젝트 확정"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes:
+    post:
+      operationId: "ProjectController_add"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.EpisodeRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.EpisodeRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "Created"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 추가"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}:
+    put:
+      operationId: "ProjectController_edit"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.EpisodeRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.EpisodeRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사례 직접 편집"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/clarifications/{key}/answer:
+    post:
+      operationId: "ProjectController_answer"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "key"
+        required: true
+        schema:
+          type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.AnswerRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.AnswerRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
+          description: "Accepted"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 확인 질문 답변"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/clarifications/{key}/drop:
+    post:
+      operationId: "ProjectController_drop"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "key"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 질문을 빼고 진행"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/confirm:
+    post:
+      operationId: "ProjectController_confirmEpisode"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사례 확정"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/exclude:
+    post:
+      operationId: "ProjectController_excludeEpisode"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사례 제외"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/restore:
+    post:
+      operationId: "ProjectController_restore"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.RestoreRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.RestoreRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사례 버전 복원"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/revision:
+    post:
+      operationId: "ProjectController_revise"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.FeedbackRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.FeedbackRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
+          description: "Accepted"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사례 수정 요청"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/episodes/{episodeId}/undo:
+    post:
+      operationId: "ProjectController_undo"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      - in: "path"
+        name: "episodeId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사례 다시 검토하기"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/rating:
+    get:
+      operationId: "RatingController_projectRating"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
+          description: "OK"
+        "204":
+          description: "평가 없음, 응답 본문 없음"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "rating-controller"
+      summary: "만족도 평가 — 사례 생성 평가 조회"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+    put:
+      operationId: "RatingController_rateProject"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.feedback.api.RatingController.RatingRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.feedback.api.RatingController.RatingRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "rating-controller"
+      summary: "만족도 평가 — 사례 생성 평가 저장"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/reopen:
+    post:
+      operationId: "ProjectController_reopen"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 재등록 시작"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/resplit:
+    post:
+      operationId: "ProjectController_resplit"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.FeedbackRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.FeedbackRequest"
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
+          description: "Accepted"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 다시 나누기"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/review:
+    get:
+      operationId: "ProjectController_review"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 검토·읽기 모드 조회"
+      security:
+      - cookieSession: []
+      description: "프로젝트가 confirmed이면 확정한 사례만 읽기 모드로 조회한다. 재등록 중에는 현재 검토 회차를 조회한다."
+  /api/projects/{projectId}/review/discard:
+    post:
+      operationId: "ProjectController_discardReview"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 검토 결과 버리기"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/skills:
+    post:
+      operationId: "ProjectController_addSkill"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.NewSkillRequest"
+            examples:
+              sample:
+                $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.NewSkillRequest"
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.profile.application.UserSkillView"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.profile.application.UserSkillView"
+          description: "Created"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 사용 기술 추가"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/projects/{projectId}/split:
+    post:
+      operationId: "ProjectController_split"
+      parameters:
+      - in: "path"
+        name: "projectId"
+        required: true
+        schema:
+          type: "integer"
+          format: "int64"
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+              examples:
+                sample:
+                  $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
+          description: "Accepted"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "project-controller"
+      summary: "프로젝트·사례 — 재구성 시작"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/skills:
+    get:
+      operationId: "SkillController_autocomplete"
+      parameters:
+      - in: "query"
+        name: "query"
+        required: false
+        schema:
+          type: "string"
+      - in: "query"
+        name: "category"
+        required: false
+        schema:
+          type: "string"
+          enum:
+          - "language"
+          - "framework"
+          - "database"
+          - "infra"
+          - "tool"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  $ref: "#/components/schemas/com.nerdnam.skill.api.SkillController.SkillResponse"
+              examples:
+                sample:
+                  $ref: "#/components/examples/SkillController_autocompleteResponse"
+          description: "OK"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      tags:
+      - "skill-controller"
+      summary: "기술 사전 — 자동완성"
+      security:
+      - cookieSession: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /api/auth/logout:
+    post:
+      operationId: "logout"
+      summary: "로그아웃"
+      responses:
+        "204":
+          description: "세션 종료, 응답 본문 없음"
+        "400":
+          $ref: "#/components/responses/Error400"
+        "401":
+          $ref: "#/components/responses/Error401"
+        "403":
+          $ref: "#/components/responses/Error403"
+        "404":
+          $ref: "#/components/responses/Error404"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "422":
+          $ref: "#/components/responses/Error422"
+        "500":
+          $ref: "#/components/responses/Error500"
+      security:
+      - cookieSession: []
+        csrfToken: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+  /oauth2/authorization/{provider}:
+    get:
+      operationId: "startSocialLogin"
+      summary: "Google·카카오 로그인 시작"
+      parameters:
+      - name: "provider"
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+          enum:
+          - "google"
+          - "kakao"
+      responses:
+        "302":
+          description: "소셜 로그인 화면으로 이동. 콜백 처리 후 설정된 웹 주소로 돌아간다."
+      security: []
+      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+components:
+  schemas:
+    com.nerdnam.aijob.api.JobAccepted:
+      type: "object"
+      properties:
+        jobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required:
+      - "jobId"
+    com.nerdnam.aijob.application.AiJobView:
+      type: "object"
+      properties:
+        failureCode:
+          anyOf:
+          - type: "string"
+            enum:
+            - "gpu_unavailable"
+            - "ai_error"
+            - "timeout"
+            - "internal"
+          - type: "null"
+        finishedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        jobType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "restructure"
+            - "fit_analysis"
+            - "writing_guide"
+          - type: "null"
+        lockScope:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        mode:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        requestedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        resultId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "in_progress"
+            - "completed"
+            - "failed"
+          - type: "null"
+        targetId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        targetType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "project"
+            - "job_posting"
+            - "fit_analysis"
+          - type: "null"
+      required:
+      - "id"
+      - "jobType"
+      - "mode"
+      - "targetType"
+      - "targetId"
+      - "lockScope"
+      - "status"
+      - "failureCode"
+      - "resultId"
+      - "requestedAt"
+      - "finishedAt"
+    com.nerdnam.feedback.api.RatingController.RatingRequest:
+      type: "object"
+      properties:
+        comment:
+          anyOf:
+          - type: "string"
+            maxLength: 300
+            minLength: 0
+          - type: "null"
+        score:
+          type: "integer"
+          format: "int32"
+          maximum: 5
+          minimum: 1
+      required:
+      - "score"
+    com.nerdnam.feedback.application.RatingService.RatingView:
+      type: "object"
+      properties:
+        comment:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        score:
+          type: "integer"
+          format: "int32"
+        targetId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        targetType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "episode_generation"
+            - "guide"
+          - type: "null"
+        updatedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+      required:
+      - "targetType"
+      - "targetId"
+      - "score"
+      - "comment"
+      - "updatedAt"
+    com.nerdnam.guide.api.WritingGuideController.GenerateRequest:
+      type: "object"
+      properties:
+        feedback:
+          anyOf:
+          - type: "string"
+            maxLength: 2000
+            minLength: 0
+          - type: "null"
+      required: []
+    com.nerdnam.guide.application.GuideViews.Citation:
+      type: "object"
+      properties:
+        chunkId:
+          type: "integer"
+          format: "int64"
+        deleted:
+          type: "boolean"
+          description: "삭제한 프로젝트·사례 근거면 true. 이름은 남기고 projectId는 null, 원본 보기 버튼은 숨긴다."
+        label:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        projectId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        requirementCount:
+          type: "integer"
+          format: "int32"
+        reregistering:
+          type: "boolean"
+        sourceId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        sourceType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "skill"
+            - "career"
+            - "project_summary"
+            - "episode"
+          - type: "null"
+      required:
+      - "chunkId"
+      - "sourceType"
+      - "sourceId"
+      - "projectId"
+      - "label"
+      - "requirementCount"
+      - "deleted"
+      - "reregistering"
+    com.nerdnam.guide.application.GuideViews.Guide:
+      type: "object"
+      properties:
+        citations:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.Citation"
+          - type: "null"
+        completedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        content:
+          anyOf:
+          - type: "object"
+            additionalProperties: {}
+            description: "탭별 내용은 C-04 v0.2 GuideResponse.content를 보존하고 cited_chunk_ids를 추가한다. sources의 이름·원본 id는 별도 citations 목록으로 연결한다. 로컬 스텁은 형식이 다를 수 있다."
+            example:
+              tab: "motive"
+              message: "결제 성능 문제를 풀어 본 경험을, 더 큰 결제 트래픽에서 이어 가고 싶다."
+              outline:
+              - title: "회사가 지금 풀고 있는 문제"
+                detail: "공고의 주요 업무 “대용량 트래픽 대응을 위한 아키텍처 개선”에서 출발하세요. 회사 서비스와 최근 소식은 직접 확인해 채우세요: [회사 관련 사실]"
+                sources: []
+              - title: "내가 겪은 비슷한 문제"
+                detail: "프로모션 피크에 결제 승인 응답이 1.2초까지 늘었던 상황"
+                sources:
+                - 531
+              - title: "합류하면 기여할 지점"
+                detail: "캐시와 비동기 분리로 병목을 줄인 방식을 결제 승인·정산 시스템 개선에 잇기"
+                sources:
+                - 531
+              keywords:
+              - "결제 승인"
+              - "대용량 트래픽"
+              - "아키텍처 개선"
+              avoid:
+              - "회사 칭찬만 나열하기"
+              - "확인하지 않은 회사 정보 쓰기"
+              cited_chunk_ids:
+              - 531
+          - type: "null"
+        createdAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        feedback:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        generationNo:
+          type: "integer"
+          format: "int32"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        path:
+          anyOf:
+          - type: "string"
+            enum:
+            - "motive"
+            - "intro"
+            - "portfolio"
+            - "career"
+            - "image"
+          - type: "null"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "generating"
+            - "completed"
+            - "failed"
+          - type: "null"
+        tab:
+          anyOf:
+          - type: "string"
+            enum:
+            - "motivation"
+            - "self_introduction"
+            - "portfolio"
+            - "career_description"
+            - "image_prompt"
+          - type: "null"
+      required:
+      - "id"
+      - "tab"
+      - "path"
+      - "generationNo"
+      - "status"
+      - "content"
+      - "feedback"
+      - "citations"
+      - "createdAt"
+      - "completedAt"
+      - "runningJobId"
+    com.nerdnam.guide.application.GuideViews.Overview:
+      type: "object"
+      properties:
+        analysisId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        positionName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        postingId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        tabs:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.TabStatus"
+          - type: "null"
+      required:
+      - "postingId"
+      - "companyName"
+      - "positionName"
+      - "analysisId"
+      - "tabs"
+    com.nerdnam.guide.application.GuideViews.TabStatus:
+      type: "object"
+      properties:
+        generationNo:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        path:
+          anyOf:
+          - type: "string"
+            enum:
+            - "motive"
+            - "intro"
+            - "portfolio"
+            - "career"
+            - "image"
+          - type: "null"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "generating"
+            - "completed"
+            - "failed"
+          - type: "null"
+        tab:
+          anyOf:
+          - type: "string"
+            enum:
+            - "motivation"
+            - "self_introduction"
+            - "portfolio"
+            - "career_description"
+            - "image_prompt"
+          - type: "null"
+      required:
+      - "tab"
+      - "path"
+      - "status"
+      - "generationNo"
+      - "runningJobId"
+    com.nerdnam.jd.api.JobPostingController.PostingRequest:
+      type: "object"
+      properties:
+        companyIntro:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        positionName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        postingUrl:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        preferred:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        required:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        tasks:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        version:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required: []
+    com.nerdnam.jd.application.JobPostingView:
+      type: "object"
+      properties:
+        companyIntro:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        createdAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        positionName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        postingUrl:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        preferred:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView.RequirementView"
+          - type: "null"
+        required:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView.RequirementView"
+          - type: "null"
+        tasks:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        updatedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        version:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "companyName"
+      - "positionName"
+      - "postingUrl"
+      - "companyIntro"
+      - "required"
+      - "preferred"
+      - "tasks"
+      - "version"
+      - "createdAt"
+      - "updatedAt"
+    com.nerdnam.jd.application.JobPostingView.RequirementView:
+      type: "object"
+      properties:
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        minYears:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        text:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "text"
+      - "skills"
+      - "minYears"
+    com.nerdnam.library.LibraryController.CareerSummary:
+      type: "object"
+      properties:
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        endMonth:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        jobTitle:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        startMonth:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        teamName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "companyName"
+      - "teamName"
+      - "jobTitle"
+      - "startMonth"
+      - "endMonth"
+    com.nerdnam.library.LibraryController.Library:
+      type: "object"
+      properties:
+        careers:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.library.LibraryController.CareerSummary"
+          - type: "null"
+        projects:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectLibraryQuery.LibraryProject"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.library.LibraryController.SkillSummary"
+          - type: "null"
+        stats:
+          anyOf:
+          - $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Stats"
+          - type: "null"
+      required:
+      - "stats"
+      - "projects"
+      - "careers"
+      - "skills"
+    com.nerdnam.library.LibraryController.Onboarding:
+      type: "object"
+      properties:
+        nextStep:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        reviewingProjectId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        stats:
+          anyOf:
+          - $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Stats"
+          - type: "null"
+      required:
+      - "stats"
+      - "reviewingProjectId"
+      - "nextStep"
+    com.nerdnam.library.LibraryController.SkillSummary:
+      type: "object"
+      properties:
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        level:
+          type: "integer"
+          format: "int32"
+        name:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "name"
+      - "level"
+    com.nerdnam.library.LibraryController.Stats:
+      type: "object"
+      properties:
+        careerCount:
+          type: "integer"
+          format: "int32"
+        confirmedEpisodeCount:
+          type: "integer"
+          format: "int32"
+        confirmedProjectCount:
+          type: "integer"
+          format: "int32"
+        projectCount:
+          type: "integer"
+          format: "int32"
+        skillCount:
+          type: "integer"
+          format: "int32"
+      required:
+      - "skillCount"
+      - "careerCount"
+      - "projectCount"
+      - "confirmedProjectCount"
+      - "confirmedEpisodeCount"
+    com.nerdnam.matching.application.FitReportQuery.AnalysisSummary:
+      type: "object"
+      properties:
+        analysisId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        completedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        failureCode:
+          anyOf:
+          - type: "string"
+            enum:
+            - "gpu_unavailable"
+            - "ai_error"
+            - "timeout"
+            - "internal"
+          - type: "null"
+        requestedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "in_progress"
+            - "completed"
+            - "failed"
+          - type: "null"
+      required:
+      - "analysisId"
+      - "status"
+      - "failureCode"
+      - "requestedAt"
+      - "completedAt"
+    com.nerdnam.matching.application.FitReportView:
+      type: "object"
+      properties:
+        analysisId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        completedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        diagnosis:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        failureCode:
+          anyOf:
+          - type: "string"
+            enum:
+            - "gpu_unavailable"
+            - "ai_error"
+            - "timeout"
+            - "internal"
+          - type: "null"
+        matches:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView.MatchView"
+          - type: "null"
+        positionName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        postingId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        preferred:
+          anyOf:
+          - $ref: "#/components/schemas/com.nerdnam.matching.domain.FitReport.Count"
+          - type: "null"
+        requestedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        required:
+          anyOf:
+          - $ref: "#/components/schemas/com.nerdnam.matching.domain.FitReport.Count"
+          - type: "null"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "in_progress"
+            - "completed"
+            - "failed"
+          - type: "null"
+      required:
+      - "analysisId"
+      - "postingId"
+      - "companyName"
+      - "positionName"
+      - "status"
+      - "failureCode"
+      - "requestedAt"
+      - "completedAt"
+      - "required"
+      - "preferred"
+      - "diagnosis"
+      - "matches"
+      - "runningJobId"
+    com.nerdnam.matching.application.FitReportView.EvidenceView:
+      type: "object"
+      properties:
+        chunkId:
+          type: "integer"
+          format: "int64"
+        deleted:
+          type: "boolean"
+          description: "삭제한 프로젝트·사례 근거면 true. 이름은 남기고 projectId는 null, 원본 보기 버튼은 숨긴다."
+        label:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        projectId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        rank:
+          type: "integer"
+          format: "int32"
+        reregistering:
+          type: "boolean"
+          description: "프로젝트·사례 근거는 현재 재등록 여부. true면 S06 프로젝트 카드로 이동한다. 기술·경력은 false."
+        snippet:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        sourceId:
+          type: "integer"
+          format: "int64"
+        sourceType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "skill"
+            - "career"
+            - "project_summary"
+            - "episode"
+          - type: "null"
+        sourceVersion:
+          type: "integer"
+          format: "int32"
+      required:
+      - "rank"
+      - "chunkId"
+      - "sourceType"
+      - "sourceId"
+      - "sourceVersion"
+      - "projectId"
+      - "reregistering"
+      - "deleted"
+      - "label"
+      - "snippet"
+    com.nerdnam.matching.application.FitReportView.MatchView:
+      type: "object"
+      properties:
+        evidences:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView.EvidenceView"
+          - type: "null"
+        gapGuide:
+          anyOf:
+          - $ref: "#/components/schemas/com.nerdnam.matching.domain.GapGuide"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        llmVerdict:
+          anyOf:
+          - type: "string"
+            enum:
+            - "unmet"
+            - "partial"
+            - "met"
+          - type: "null"
+        minYears:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        reason:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        requirementId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        ruleVerdict:
+          anyOf:
+          - type: "string"
+            enum:
+            - "unmet"
+            - "partial"
+            - "met"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        text:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        type:
+          anyOf:
+          - type: "string"
+            enum:
+            - "required"
+            - "preferred"
+          - type: "null"
+        verdict:
+          anyOf:
+          - type: "string"
+            enum:
+            - "unmet"
+            - "partial"
+            - "met"
+          - type: "null"
+      required:
+      - "id"
+      - "requirementId"
+      - "type"
+      - "text"
+      - "skills"
+      - "minYears"
+      - "ruleVerdict"
+      - "llmVerdict"
+      - "verdict"
+      - "reason"
+      - "evidences"
+      - "gapGuide"
+    com.nerdnam.matching.application.PostingListQuery.PostingSummary:
+      type: "object"
+      properties:
+        analysisId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        analyzedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        positionName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        preferredMet:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        preferredPartial:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        preferredTotal:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        requiredMet:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        requiredTotal:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "in_progress"
+            - "completed"
+            - "failed"
+            - "draft"
+          - type: "null"
+        updatedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+      required:
+      - "id"
+      - "companyName"
+      - "positionName"
+      - "status"
+      - "analysisId"
+      - "analyzedAt"
+      - "requiredMet"
+      - "requiredTotal"
+      - "preferredMet"
+      - "preferredPartial"
+      - "preferredTotal"
+      - "updatedAt"
+    com.nerdnam.matching.domain.FitReport.Count:
+      type: "object"
+      properties:
+        met:
+          type: "integer"
+          format: "int32"
+        partial:
+          type: "integer"
+          format: "int32"
+        total:
+          type: "integer"
+          format: "int32"
+        unmet:
+          type: "integer"
+          format: "int32"
+      required:
+      - "met"
+      - "partial"
+      - "unmet"
+      - "total"
+    com.nerdnam.matching.domain.GapGuide:
+      type: "object"
+      properties:
+        advice:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        avoid:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        citedChunkIds:
+          anyOf:
+          - type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+          - type: "null"
+        source:
+          anyOf:
+          - type: "string"
+            enum:
+            - "ai"
+            - "fallback"
+          - type: "null"
+      required:
+      - "advice"
+      - "avoid"
+      - "citedChunkIds"
+      - "source"
+    com.nerdnam.member.api.AuthController.CsrfView:
+      type: "object"
+      properties:
+        headerName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        token:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "headerName"
+      - "token"
+    com.nerdnam.member.application.MemberService.MemberView:
+      type: "object"
+      properties:
+        consentRequired:
+          type: "boolean"
+        displayName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        email:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        termsVersion:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "displayName"
+      - "email"
+      - "consentRequired"
+      - "termsVersion"
+    com.nerdnam.profile.api.CareerController.CareerRequest:
+      type: "object"
+      properties:
+        companyName:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+        duties:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        employmentType:
+          type: "string"
+          enum:
+          - "full_time"
+          - "contract"
+          - "intern"
+          - "freelance"
+        endMonth:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        jobTitle:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+        positionTitle:
+          anyOf:
+          - type: "string"
+            maxLength: 50
+            minLength: 0
+          - type: "null"
+        startMonth:
+          type: "string"
+          example: "2026-10"
+          pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+        teamName:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+        userSkillIds:
+          anyOf:
+          - type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+            uniqueItems: true
+          - type: "null"
+        version:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required:
+      - "companyName"
+      - "employmentType"
+      - "jobTitle"
+      - "startMonth"
+      - "teamName"
+    com.nerdnam.profile.api.CareerController.CareerResponse:
+      type: "object"
+      properties:
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        current:
+          type: "boolean"
+        duties:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        employmentType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "full_time"
+            - "contract"
+            - "intern"
+            - "freelance"
+          - type: "null"
+        endMonth:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        jobTitle:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        positionTitle:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        startMonth:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        teamName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        userSkillIds:
+          anyOf:
+          - type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+            uniqueItems: true
+          - type: "null"
+        version:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "companyName"
+      - "teamName"
+      - "jobTitle"
+      - "positionTitle"
+      - "employmentType"
+      - "startMonth"
+      - "endMonth"
+      - "current"
+      - "duties"
+      - "userSkillIds"
+      - "version"
+    com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest:
+      type: "object"
+      properties:
+        category:
+          anyOf:
+          - type: "string"
+            enum:
+            - "language"
+            - "framework"
+            - "database"
+            - "infra"
+            - "tool"
+          - type: "null"
+        level:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+            maximum: 4
+            minimum: 1
+          - type: "null"
+        name:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "name"
+    com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest:
+      type: "object"
+      properties:
+        level:
+          type: "integer"
+          format: "int32"
+          maximum: 4
+          minimum: 1
+      required:
+      - "level"
+    com.nerdnam.profile.api.UserSkillController.UserSkillResponse:
+      type: "object"
+      properties:
+        category:
+          anyOf:
+          - type: "string"
+            enum:
+            - "language"
+            - "framework"
+            - "database"
+            - "infra"
+            - "tool"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        level:
+          type: "integer"
+          format: "int32"
+        levelName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        name:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        skillId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required:
+      - "id"
+      - "skillId"
+      - "name"
+      - "category"
+      - "level"
+      - "levelName"
+    com.nerdnam.profile.application.UserSkillView:
+      type: "object"
+      properties:
+        category:
+          anyOf:
+          - type: "string"
+            enum:
+            - "language"
+            - "framework"
+            - "database"
+            - "infra"
+            - "tool"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        name:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        proficiency:
+          anyOf:
+          - type: "string"
+            enum:
+            - "learning"
+            - "working"
+            - "proficient"
+            - "expert"
+          - type: "null"
+        skillId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required:
+      - "id"
+      - "skillId"
+      - "name"
+      - "category"
+      - "proficiency"
+    com.nerdnam.project.api.ProjectController.AnswerRequest:
+      type: "object"
+      properties:
+        answer:
+          type: "string"
+          maxLength: 2000
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "answer"
+    com.nerdnam.project.api.ProjectController.DraftRequest:
+      type: "object"
+      properties:
+        affiliation:
+          anyOf:
+          - type: "string"
+            enum:
+            - "career"
+            - "personal"
+            - "team"
+          - type: "null"
+        careerId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        links:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        rawText:
+          anyOf:
+          - type: "string"
+            maxLength: 20000
+            minLength: 0
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+            maxLength: 100
+            minLength: 0
+          - type: "null"
+        userSkillIds:
+          anyOf:
+          - type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+            uniqueItems: true
+          - type: "null"
+        version:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required: []
+    com.nerdnam.project.api.ProjectController.EpisodeRequest:
+      type: "object"
+      properties:
+        metrics:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.Metric"
+          - type: "null"
+        problem:
+          anyOf:
+          - type: "string"
+            maxLength: 5000
+            minLength: 0
+          - type: "null"
+        result:
+          anyOf:
+          - type: "string"
+            maxLength: 5000
+            minLength: 0
+          - type: "null"
+        role:
+          anyOf:
+          - type: "string"
+            maxLength: 200
+            minLength: 0
+          - type: "null"
+        solution:
+          anyOf:
+          - type: "string"
+            maxLength: 5000
+            minLength: 0
+          - type: "null"
+        title:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "title"
+    com.nerdnam.project.api.ProjectController.FeedbackRequest:
+      type: "object"
+      properties:
+        feedback:
+          type: "string"
+          maxLength: 2000
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "feedback"
+    com.nerdnam.project.api.ProjectController.NewSkillRequest:
+      type: "object"
+      properties:
+        category:
+          type: "string"
+          enum:
+          - "language"
+          - "framework"
+          - "database"
+          - "infra"
+          - "tool"
+        name:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "category"
+      - "name"
+    com.nerdnam.project.api.ProjectController.RestoreRequest:
+      type: "object"
+      properties:
+        versionNo:
+          type: "integer"
+          format: "int32"
+          minimum: 1
+      required:
+      - "versionNo"
+    com.nerdnam.project.application.ProjectLibraryQuery.ConfirmedEpisode:
+      type: "object"
+      properties:
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        summaryLine:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "title"
+      - "summaryLine"
+    com.nerdnam.project.application.ProjectLibraryQuery.LibraryProject:
+      type: "object"
+      properties:
+        affiliation:
+          anyOf:
+          - type: "string"
+            enum:
+            - "career"
+            - "personal"
+            - "team"
+          - type: "null"
+        careerCompanyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        confirmedEpisodes:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectLibraryQuery.ConfirmedEpisode"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        reregistering:
+          type: "boolean"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SkillRef"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "draft"
+            - "review"
+            - "confirmed"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerCompanyName"
+      - "periodStart"
+      - "periodEnd"
+      - "skills"
+      - "confirmedEpisodes"
+    com.nerdnam.project.application.ProjectViews.Detail:
+      type: "object"
+      properties:
+        affiliation:
+          anyOf:
+          - type: "string"
+            enum:
+            - "career"
+            - "personal"
+            - "team"
+          - type: "null"
+        careerCompanyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        careerId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        generationCount:
+          type: "integer"
+          format: "int32"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        links:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        rawText:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        reregistering:
+          type: "boolean"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SkillRef"
+          - type: "null"
+        splitRound:
+          type: "integer"
+          format: "int32"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "draft"
+            - "review"
+            - "confirmed"
+          - type: "null"
+        supplements:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SupplementView"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        version:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerId"
+      - "careerCompanyName"
+      - "periodStart"
+      - "periodEnd"
+      - "rawText"
+      - "skills"
+      - "links"
+      - "supplements"
+      - "splitRound"
+      - "generationCount"
+      - "version"
+      - "runningJobId"
+    com.nerdnam.project.application.ProjectViews.EpisodeView:
+      type: "object"
+      properties:
+        clarifications:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.Clarification"
+          - type: "null"
+        currentVersion:
+          type: "integer"
+          format: "int32"
+        displayOrder:
+          type: "integer"
+          format: "int32"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        metrics:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.Metric"
+          - type: "null"
+        origin:
+          anyOf:
+          - type: "string"
+            enum:
+            - "ai"
+            - "user"
+          - type: "null"
+        problem:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        result:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        role:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        solution:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        sourceSpans:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.SourceSpan"
+          - type: "null"
+        splitRound:
+          type: "integer"
+          format: "int32"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "review"
+            - "confirmed"
+            - "excluded"
+            - "superseded"
+            - "discarded"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        versions:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.VersionView"
+          - type: "null"
+      required:
+      - "id"
+      - "splitRound"
+      - "displayOrder"
+      - "origin"
+      - "status"
+      - "currentVersion"
+      - "title"
+      - "role"
+      - "problem"
+      - "solution"
+      - "result"
+      - "skills"
+      - "metrics"
+      - "sourceSpans"
+      - "clarifications"
+      - "versions"
+    com.nerdnam.project.application.ProjectViews.Review:
+      type: "object"
+      properties:
+        affiliation:
+          anyOf:
+          - type: "string"
+            enum:
+            - "career"
+            - "personal"
+            - "team"
+          - type: "null"
+        careerCompanyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        episodes:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.EpisodeView"
+          - type: "null"
+        generationCount:
+          type: "integer"
+          format: "int32"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        rawText:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        reregistering:
+          type: "boolean"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SkillRef"
+          - type: "null"
+        sourceText:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        splitRound:
+          type: "integer"
+          format: "int32"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "draft"
+            - "review"
+            - "confirmed"
+          - type: "null"
+        supplements:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SupplementView"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerCompanyName"
+      - "periodStart"
+      - "periodEnd"
+      - "rawText"
+      - "sourceText"
+      - "supplements"
+      - "skills"
+      - "splitRound"
+      - "generationCount"
+      - "episodes"
+      - "runningJobId"
+    com.nerdnam.project.application.ProjectViews.SkillRef:
+      type: "object"
+      properties:
+        name:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        userSkillId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required:
+      - "userSkillId"
+      - "name"
+    com.nerdnam.project.application.ProjectViews.Summary:
+      type: "object"
+      properties:
+        affiliation:
+          anyOf:
+          - type: "string"
+            enum:
+            - "career"
+            - "personal"
+            - "team"
+          - type: "null"
+        careerId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        confirmedEpisodeCount:
+          type: "integer"
+          format: "int32"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        lastConfirmedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        reregistering:
+          type: "boolean"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "draft"
+            - "review"
+            - "confirmed"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        updatedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerId"
+      - "periodStart"
+      - "periodEnd"
+      - "confirmedEpisodeCount"
+      - "lastConfirmedAt"
+      - "updatedAt"
+    com.nerdnam.project.application.ProjectViews.SupplementView:
+      type: "object"
+      properties:
+        answer:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        createdAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        episodeId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        question:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "episodeId"
+      - "question"
+      - "answer"
+      - "createdAt"
+    com.nerdnam.project.application.ProjectViews.VersionView:
+      type: "object"
+      properties:
+        changeType:
+          anyOf:
+          - type: "string"
+            enum:
+            - "ai_split"
+            - "ai_revision"
+            - "user_edit"
+            - "user_created"
+            - "restored"
+          - type: "null"
+        clarifications:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.Clarification"
+          - type: "null"
+        createdAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        feedback:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        metrics:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.Metric"
+          - type: "null"
+        problem:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        restoredFrom:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        result:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        role:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        skills:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        solution:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        sourceSpans:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/com.nerdnam.project.domain.SourceSpan"
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        versionNo:
+          type: "integer"
+          format: "int32"
+      required:
+      - "versionNo"
+      - "changeType"
+      - "restoredFrom"
+      - "feedback"
+      - "createdAt"
+      - "title"
+      - "role"
+      - "problem"
+      - "solution"
+      - "result"
+      - "skills"
+      - "metrics"
+      - "sourceSpans"
+      - "clarifications"
+    com.nerdnam.project.domain.Clarification:
+      type: "object"
+      properties:
+        example:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        field:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        key:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        question:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "key"
+      - "field"
+      - "question"
+      - "example"
+    com.nerdnam.project.domain.Metric:
+      type: "object"
+      properties:
+        after:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        before:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        name:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        source:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "name"
+      - "before"
+      - "after"
+      - "source"
+    com.nerdnam.project.domain.SourceSpan:
+      type: "object"
+      properties:
+        end:
+          type: "integer"
+          format: "int32"
+        start:
+          type: "integer"
+          format: "int32"
+      required:
+      - "start"
+      - "end"
+    com.nerdnam.skill.api.SkillController.SkillResponse:
+      type: "object"
+      properties:
+        category:
+          anyOf:
+          - type: "string"
+            enum:
+            - "language"
+            - "framework"
+            - "database"
+            - "infra"
+            - "tool"
+          - type: "null"
+        id:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        name:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "id"
+      - "name"
+      - "category"
+    ProblemDetail:
+      type: "object"
+      required:
+      - "type"
+      - "title"
+      - "status"
+      - "detail"
+      properties:
+        type:
+          type: "string"
+          example: "about:blank"
+        title:
+          type: "string"
+          description: "업무 오류 코드는 INVALID_INPUT, CONSENT_REQUIRED, AI_JOB_RUNNING 등 대문자다. HTTP 기본 오류의 title은 Spring 기본 문장일 수 있다."
+        status:
+          type: "integer"
+        detail:
+          type: "string"
+        instance:
+          type: "string"
+        runningJobId:
+          type: "integer"
+          format: "int64"
+        termsVersion:
+          type: "string"
+        fieldErrors:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              field:
+                type: "string"
+              message:
+                type: "string"
+        violations:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              field:
+                type: "string"
+              code:
+                type: "string"
+              message:
+                type: "string"
+              index:
+                type:
+                - "integer"
+                - "null"
+        usages:
+          type: "array"
+          items:
+            type: "object"
+            required:
+            - "type"
+            - "id"
+            - "name"
+            properties:
+              type:
+                type: "string"
+                enum:
+                - "career"
+                - "project"
+              id:
+                type: "integer"
+                format: "int64"
+              name:
+                type: "string"
+      additionalProperties: true
+  examples:
+    com.nerdnam.aijob.application.AiJobView:
+      summary: "형식 확인용 예시"
+      value:
+        failureCode: null
+        finishedAt: null
+        id: 1
+        jobType: "restructure"
+        lockScope: "예시"
+        mode: "예시"
+        requestedAt: "2026-10-23T06:00:00Z"
+        resultId: null
+        status: "in_progress"
+        targetId: 1
+        targetType: "project"
+    com.nerdnam.member.api.AuthController.CsrfView:
+      summary: "형식 확인용 예시"
+      value:
+        headerName: "X-XSRF-TOKEN"
+        token: "예시"
+    com.nerdnam.matching.application.FitReportView:
+      summary: "형식 확인용 예시"
+      value:
+        analysisId: 1
+        companyName: "예시 회사"
+        completedAt: null
+        diagnosis: "예시"
+        failureCode: null
+        matches:
+        - evidences:
+          - chunkId: 1
+            deleted: false
+            label: "예시"
+            projectId: 1
+            rank: 1
+            reregistering: false
+            snippet: "예시"
+            sourceId: 1
+            sourceType: "skill"
+            sourceVersion: 1
+          gapGuide:
+            advice: "예시"
+            avoid: "예시"
+            citedChunkIds:
+            - 1
+            source: "ai"
+          id: 1
+          llmVerdict: "unmet"
+          minYears: 1
+          reason: "예시"
+          requirementId: 1
+          ruleVerdict: "unmet"
+          skills:
+          - "예시"
+          text: "예시"
+          type: "required"
+          verdict: "unmet"
+        positionName: "백엔드 개발자"
+        postingId: 1
+        preferred:
+          met: 1
+          partial: 1
+          total: 1
+          unmet: 1
+        requestedAt: "2026-10-23T06:00:00Z"
+        required:
+          met: 1
+          partial: 1
+          total: 1
+          unmet: 1
+        runningJobId: null
+        status: "in_progress"
+    FitAnalysisController_listResponse:
+      summary: "형식 확인용 예시"
+      value:
+      - analysisId: 1
+        analyzedAt: "2026-10-23T06:00:00Z"
+        companyName: "예시 회사"
+        id: 1
+        positionName: "백엔드 개발자"
+        preferredMet: 1
+        preferredPartial: 1
+        preferredTotal: 1
+        requiredMet: 1
+        requiredTotal: 1
+        status: "in_progress"
+        updatedAt: "2026-10-23T06:00:00Z"
+    com.nerdnam.jd.application.JobPostingView:
+      summary: "형식 확인용 예시"
+      value:
+        companyIntro: "예시"
+        companyName: "예시 회사"
+        createdAt: "2026-10-23T06:00:00Z"
+        id: 1
+        positionName: "백엔드 개발자"
+        postingUrl: "예시"
+        preferred:
+        - id: 1
+          minYears: 1
+          skills:
+          - "예시"
+          text: "예시"
+        required:
+        - id: 1
+          minYears: 1
+          skills:
+          - "예시"
+          text: "예시"
+        tasks:
+        - "예시"
+        updatedAt: "2026-10-23T06:00:00Z"
+        version: 0
+    com.nerdnam.jd.api.JobPostingController.PostingRequest:
+      summary: "형식 확인용 예시"
+      value:
+        companyIntro: "예시"
+        companyName: "예시 회사"
+        positionName: "백엔드 개발자"
+        postingUrl: "예시"
+        preferred:
+        - "예시"
+        required:
+        - "예시"
+        tasks:
+        - "예시"
+        version: 0
+    FitAnalysisController_historyResponse:
+      summary: "형식 확인용 예시"
+      value:
+      - analysisId: 1
+        completedAt: null
+        failureCode: null
+        requestedAt: "2026-10-23T06:00:00Z"
+        status: "in_progress"
+    com.nerdnam.aijob.api.JobAccepted:
+      summary: "형식 확인용 예시"
+      value:
+        jobId: 1
+    com.nerdnam.guide.application.GuideViews.Overview:
+      summary: "형식 확인용 예시"
+      value:
+        analysisId: 1
+        companyName: "예시 회사"
+        positionName: "백엔드 개발자"
+        postingId: 1
+        tabs:
+        - generationNo: 1
+          path: "motive"
+          runningJobId: null
+          status: "generating"
+          tab: "motivation"
+    com.nerdnam.feedback.application.RatingService.RatingView:
+      summary: "형식 확인용 예시"
+      value:
+        comment: "예시"
+        score: 1
+        targetId: 1
+        targetType: "episode_generation"
+        updatedAt: "2026-10-23T06:00:00Z"
+    com.nerdnam.feedback.api.RatingController.RatingRequest:
+      summary: "형식 확인용 예시"
+      value:
+        comment: "예시"
+        score: 1
+    com.nerdnam.guide.application.GuideViews.Guide:
+      summary: "형식 확인용 예시"
+      value:
+        citations:
+        - chunkId: 1
+          deleted: false
+          label: "예시"
+          projectId: 1
+          requirementCount: 1
+          reregistering: false
+          sourceId: 1
+          sourceType: "skill"
+        completedAt: null
+        content:
+          tab: "motive"
+          message: "결제 성능 문제를 풀어 본 경험을, 더 큰 결제 트래픽에서 이어 가고 싶다."
+          outline:
+          - title: "회사가 지금 풀고 있는 문제"
+            detail: "공고의 주요 업무 “대용량 트래픽 대응을 위한 아키텍처 개선”에서 출발하세요. 회사 서비스와 최근 소식은 직접 확인해 채우세요: [회사 관련 사실]"
+            sources: []
+          - title: "내가 겪은 비슷한 문제"
+            detail: "프로모션 피크에 결제 승인 응답이 1.2초까지 늘었던 상황"
+            sources:
+            - 531
+          - title: "합류하면 기여할 지점"
+            detail: "캐시와 비동기 분리로 병목을 줄인 방식을 결제 승인·정산 시스템 개선에 잇기"
+            sources:
+            - 531
+          keywords:
+          - "결제 승인"
+          - "대용량 트래픽"
+          - "아키텍처 개선"
+          avoid:
+          - "회사 칭찬만 나열하기"
+          - "확인하지 않은 회사 정보 쓰기"
+          cited_chunk_ids:
+          - 531
+        createdAt: "2026-10-23T06:00:00Z"
+        feedback: null
+        generationNo: 1
+        id: 1
+        path: "motive"
+        runningJobId: null
+        status: "generating"
+        tab: "motivation"
+    com.nerdnam.guide.api.WritingGuideController.GenerateRequest:
+      summary: "형식 확인용 예시"
+      value:
+        feedback: null
+    com.nerdnam.member.application.MemberService.MemberView:
+      summary: "형식 확인용 예시"
+      value:
+        consentRequired: false
+        displayName: "예시"
+        email: "example@example.com"
+        id: 1
+        termsVersion: "2026-10"
+    CareerController_listResponse:
+      summary: "형식 확인용 예시"
+      value:
+      - companyName: "예시 회사"
+        current: false
+        duties:
+        - "예시"
+        employmentType: "full_time"
+        endMonth: "예시"
+        id: 1
+        jobTitle: "백엔드 개발자"
+        positionTitle: "예시"
+        startMonth: "예시"
+        teamName: "예시"
+        userSkillIds:
+        - 1
+        version: 0
+    com.nerdnam.profile.api.CareerController.CareerResponse:
+      summary: "형식 확인용 예시"
+      value:
+        companyName: "예시 회사"
+        current: false
+        duties:
+        - "예시"
+        employmentType: "full_time"
+        endMonth: "예시"
+        id: 1
+        jobTitle: "백엔드 개발자"
+        positionTitle: "예시"
+        startMonth: "예시"
+        teamName: "예시"
+        userSkillIds:
+        - 1
+        version: 0
+    com.nerdnam.profile.api.CareerController.CareerRequest:
+      summary: "형식 확인용 예시"
+      value:
+        companyName: "예시 회사"
+        duties:
+        - "예시"
+        employmentType: "full_time"
+        endMonth: "2026-10"
+        jobTitle: "백엔드 개발자"
+        positionTitle: "예시"
+        startMonth: "2026-10"
+        teamName: "예시"
+        userSkillIds:
+        - 1
+        version: 0
+    com.nerdnam.library.LibraryController.Library:
+      summary: "형식 확인용 예시"
+      value:
+        careers:
+        - companyName: "예시 회사"
+          endMonth: "2026-10"
+          id: 1
+          jobTitle: "백엔드 개발자"
+          startMonth: "2026-10"
+          teamName: "예시"
+        projects:
+        - affiliation: "career"
+          careerCompanyName: "예시"
+          confirmedEpisodes:
+          - id: 1
+            summaryLine: "예시"
+            title: "예시"
+          id: 1
+          periodEnd: "2026-10"
+          periodStart: "2026-10"
+          reregistering: false
+          skills:
+          - name: "Redis"
+            userSkillId: 1
+          status: "draft"
+          title: "예시"
+        skills:
+        - id: 1
+          level: 1
+          name: "Redis"
+        stats:
+          careerCount: 1
+          confirmedEpisodeCount: 1
+          confirmedProjectCount: 1
+          projectCount: 1
+          skillCount: 1
+    com.nerdnam.library.LibraryController.Onboarding:
+      summary: "형식 확인용 예시"
+      value:
+        nextStep: "예시"
+        reviewingProjectId: null
+        stats:
+          careerCount: 1
+          confirmedEpisodeCount: 1
+          confirmedProjectCount: 1
+          projectCount: 1
+          skillCount: 1
+    UserSkillController_listResponse:
+      summary: "형식 확인용 예시"
+      value:
+      - category: "language"
+        id: 1
+        level: 1
+        levelName: "예시"
+        name: "Redis"
+        skillId: 1
+    com.nerdnam.profile.api.UserSkillController.UserSkillResponse:
+      summary: "형식 확인용 예시"
+      value:
+        category: "language"
+        id: 1
+        level: 1
+        levelName: "예시"
+        name: "Redis"
+        skillId: 1
+    com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest:
+      summary: "형식 확인용 예시"
+      value:
+        category: "language"
+        level: 1
+        name: "Redis"
+    com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest:
+      summary: "형식 확인용 예시"
+      value:
+        level: 1
+    ProjectController_listResponse:
+      summary: "형식 확인용 예시"
+      value:
+      - affiliation: "career"
+        careerId: 1
+        confirmedEpisodeCount: 1
+        id: 1
+        lastConfirmedAt: "2026-10-23T06:00:00Z"
+        periodEnd: "2026-10"
+        periodStart: "2026-10"
+        reregistering: false
+        status: "draft"
+        title: "예시"
+        updatedAt: "2026-10-23T06:00:00Z"
+    com.nerdnam.project.application.ProjectViews.Detail:
+      summary: "형식 확인용 예시"
+      value:
+        affiliation: "career"
+        careerCompanyName: "예시"
+        careerId: 1
+        generationCount: 1
+        id: 1
+        links:
+        - "예시"
+        periodEnd: "2026-10"
+        periodStart: "2026-10"
+        rawText: "Redis 캐시를 적용해 응답 시간을 1초에서 0.3초로 줄였습니다."
+        reregistering: false
+        runningJobId: null
+        skills:
+        - name: "Redis"
+          userSkillId: 1
+        splitRound: 1
+        status: "draft"
+        supplements:
+        - answer: "예시"
+          createdAt: "2026-10-23T06:00:00Z"
+          episodeId: 1
+          id: 1
+          question: "예시"
+        title: "예시"
+        version: 0
+    com.nerdnam.project.api.ProjectController.DraftRequest:
+      summary: "형식 확인용 예시"
+      value:
+        affiliation: "career"
+        careerId: 1
+        links:
+        - "예시"
+        periodEnd: "2026-10"
+        periodStart: "2026-10"
+        rawText: "Redis 캐시를 적용해 응답 시간을 1초에서 0.3초로 줄였습니다."
+        title: "예시"
+        userSkillIds:
+        - 1
+        version: 0
+    com.nerdnam.project.application.ProjectViews.Review:
+      summary: "형식 확인용 예시"
+      value:
+        affiliation: "career"
+        careerCompanyName: "예시"
+        episodes:
+        - clarifications:
+          - example: "예시"
+            field: "예시"
+            key: "예시"
+            question: "예시"
+          currentVersion: 1
+          displayOrder: 1
+          id: 1
+          metrics:
+          - after: "예시"
+            before: "예시"
+            name: "Redis"
+            source: "예시"
+          origin: "ai"
+          problem: "예시"
+          result: "예시"
+          role: "예시"
+          skills:
+          - "예시"
+          solution: "예시"
+          sourceSpans:
+          - end: 1
+            start: 1
+          splitRound: 1
+          status: "review"
+          title: "예시"
+          versions:
+          - changeType: "ai_split"
+            clarifications:
+            - example: "예시"
+              field: "예시"
+              key: "예시"
+              question: "예시"
+            createdAt: "2026-10-23T06:00:00Z"
+            feedback: null
+            metrics:
+            - after: "예시"
+              before: "예시"
+              name: "Redis"
+              source: "예시"
+            problem: "예시"
+            restoredFrom: 1
+            result: "예시"
+            role: "예시"
+            skills:
+            - "예시"
+            solution: "예시"
+            sourceSpans:
+            - end: 1
+              start: 1
+            title: "예시"
+            versionNo: 1
+        generationCount: 1
+        id: 1
+        periodEnd: "2026-10"
+        periodStart: "2026-10"
+        rawText: "Redis 캐시를 적용해 응답 시간을 1초에서 0.3초로 줄였습니다."
+        reregistering: false
+        runningJobId: null
+        skills:
+        - name: "Redis"
+          userSkillId: 1
+        sourceText: "예시"
+        splitRound: 1
+        status: "draft"
+        supplements:
+        - answer: "예시"
+          createdAt: "2026-10-23T06:00:00Z"
+          episodeId: 1
+          id: 1
+          question: "예시"
+        title: "예시"
+    com.nerdnam.project.api.ProjectController.EpisodeRequest:
+      summary: "형식 확인용 예시"
+      value:
+        metrics:
+        - after: "예시"
+          before: "예시"
+          name: "Redis"
+          source: "예시"
+        problem: "예시"
+        result: "예시"
+        role: "예시"
+        solution: "예시"
+        title: "예시"
+    com.nerdnam.project.api.ProjectController.AnswerRequest:
+      summary: "형식 확인용 예시"
+      value:
+        answer: "예시"
+    com.nerdnam.project.api.ProjectController.RestoreRequest:
+      summary: "형식 확인용 예시"
+      value:
+        versionNo: 1
+    com.nerdnam.project.api.ProjectController.FeedbackRequest:
+      summary: "형식 확인용 예시"
+      value:
+        feedback: "성과를 더 강조해 주세요."
+    com.nerdnam.profile.application.UserSkillView:
+      summary: "형식 확인용 예시"
+      value:
+        category: "language"
+        id: 1
+        name: "Redis"
+        proficiency: "learning"
+        skillId: 1
+    com.nerdnam.project.api.ProjectController.NewSkillRequest:
+      summary: "형식 확인용 예시"
+      value:
+        category: "language"
+        name: "Redis"
+    SkillController_autocompleteResponse:
+      summary: "형식 확인용 예시"
+      value:
+      - category: "language"
+        id: 1
+        name: "Redis"
+  securitySchemes:
+    cookieSession:
+      type: "apiKey"
+      in: "cookie"
+      name: "SESSION"
+    csrfToken:
+      type: "apiKey"
+      in: "header"
+      name: "X-XSRF-TOKEN"
+  responses:
+    Error400:
+      description: "입력 오류. fieldErrors 또는 violations를 확인한다."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Error401:
+      description: "로그인이 필요하다."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Error403:
+      description: "현재 약관 동의 필요(CONSENT_REQUIRED) 또는 CSRF·접근 권한 오류."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Error404:
+      description: "없거나 내 소유가 아닌 자료."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Error409:
+      description: "버전 충돌, 사용 중인 자료 또는 AI 작업 진행 중. runningJobId로 이어서 조회한다."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Error422:
+      description: "현재 상태에서 할 수 없는 동작."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Error500:
+      description: "서버 오류."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"

@@ -177,8 +177,8 @@ class FitAnalysisApiTest extends ApiTestSupport {
 
         ResultActions list = getJson(member, "/api/job-postings").andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(draft))).asString().contains("DRAFT");
-        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(analyzed))).asString().contains("COMPLETED");
+        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(draft))).asString().contains("draft");
+        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(analyzed))).asString().contains("completed");
         assertThat((Object) read(list, "$[?(@.id == %d)].requiredMet".formatted(analyzed))).asString().contains("1");
     }
 
