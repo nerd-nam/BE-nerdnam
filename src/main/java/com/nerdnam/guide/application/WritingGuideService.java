@@ -123,7 +123,7 @@ public class WritingGuideService {
             List<TabStatus> tabs = new ArrayList<>();
             for (GuideTab tab : GuideTab.values()) {
                 WritingGuide g = latest.get(tab);
-                tabs.add(new TabStatus(tab, tab.path(), g == null ? null : g.getStatus(),
+                tabs.add(new TabStatus(tab, g == null ? null : g.getStatus(),
                         g == null ? null : g.getGenerationNo(), running(report.analysisId(), tab)));
             }
             return new Overview(postingId, report.companyName(), report.positionName(), report.analysisId(), tabs);
@@ -135,7 +135,7 @@ public class WritingGuideService {
             FitReportView report = completedReport(memberId, postingId);
             WritingGuide g = guides.findFirstByFitAnalysisIdAndTabOrderByGenerationNoDesc(report.analysisId(), tab)
                     .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "아직 만들지 않은 탭이에요."));
-            return new GuideViews.Guide(g.getId(), tab, tab.path(), g.getGenerationNo(), g.getStatus(), g.getContent(),
+            return new GuideViews.Guide(g.getId(), tab, g.getGenerationNo(), g.getStatus(), g.getContent(),
                     g.getFeedback(), citations(memberId, report, g), g.getCreatedAt(), g.getCompletedAt(),
                     running(report.analysisId(), tab));
         });

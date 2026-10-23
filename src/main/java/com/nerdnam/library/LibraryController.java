@@ -11,6 +11,7 @@ import com.nerdnam.project.domain.ProjectStatus;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,7 +39,7 @@ public class LibraryController {
     }
 
     public record CareerSummary(Long id, String companyName, String teamName, String jobTitle, YearMonth startMonth,
-                                YearMonth endMonth) {
+                                @Nullable YearMonth endMonth) {
     }
 
     public record Library(Stats stats, List<LibraryProject> projects, List<CareerSummary> careers,
@@ -49,7 +50,7 @@ public class LibraryController {
      * 온보딩 진행 상태. nextStep 은 로그인 직후 보낼 화면: skills → career(건너뛸 수 있음) → project → library (값은 소문자, D-10).
      * reviewingProjectId 가 있으면 S02·S03 에 "검토로 돌아가기"를 보여주고, S04 에 들어갈 때 경고한다.
      */
-    public record Onboarding(Stats stats, Long reviewingProjectId, String nextStep) {
+    public record Onboarding(Stats stats, @Nullable Long reviewingProjectId, String nextStep) {
     }
 
     @GetMapping("/library")

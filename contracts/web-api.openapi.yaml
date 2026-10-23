@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: "nerdnam 웹 API"
-  version: "0.1.0"
+  version: "0.1.2"
   description: |
     C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
     JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -13,6 +13,10 @@ info:
     이때 내 정보 조회·동의·탈퇴·로그아웃·CSRF 준비만 가능하다.
     AI 작업은 202 + jobId를 받고 GET /api/ai-jobs/{jobId}를 폴링한다. 웹으로 SSE를 보내지 않는다.
     예시는 형식 확인용 가상 데이터이며 실제 회원·작업 id가 아니다.
+    응답은 값이 null이어도 키를 남기므로 모든 응답 필드가 required다.
+    그중 값이 null일 수 있는 것만 anyOf로 null을 함께 적는다. 꼭 있는 값에는 null이 없다.
+    스키마 이름은 짧은 Java 타입 이름이고, 원래 타입은 x-java-class에 남긴다(웹은 x- 확장을 무시한다).
+    작성 방향 탭은 요청 경로와 응답이 같은 이름이다: motive·intro·portfolio·career·image.
 servers:
 - url: "/"
   description: "BE 서버의 기준 주소"
@@ -32,7 +36,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.application.AiJobView"
+                $ref: "#/components/schemas/AiJobView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.application.AiJobView"
@@ -65,7 +69,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.member.api.AuthController.CsrfView"
+                $ref: "#/components/schemas/CsrfView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.member.api.AuthController.CsrfView"
@@ -90,7 +94,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView"
+                $ref: "#/components/schemas/FitReportView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.matching.application.FitReportView"
@@ -125,7 +129,7 @@ paths:
               schema:
                 type: "array"
                 items:
-                  $ref: "#/components/schemas/com.nerdnam.matching.application.PostingListQuery.PostingSummary"
+                  $ref: "#/components/schemas/PostingSummary"
               examples:
                 sample:
                   $ref: "#/components/examples/FitAnalysisController_listResponse"
@@ -156,7 +160,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.jd.api.JobPostingController.PostingRequest"
+              $ref: "#/components/schemas/PostingRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.jd.api.JobPostingController.PostingRequest"
@@ -165,7 +169,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView"
+                $ref: "#/components/schemas/JobPostingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.jd.application.JobPostingView"
@@ -239,7 +243,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView"
+                $ref: "#/components/schemas/JobPostingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.jd.application.JobPostingView"
@@ -277,7 +281,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.jd.api.JobPostingController.PostingRequest"
+              $ref: "#/components/schemas/PostingRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.jd.api.JobPostingController.PostingRequest"
@@ -287,7 +291,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView"
+                $ref: "#/components/schemas/JobPostingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.jd.application.JobPostingView"
@@ -330,7 +334,7 @@ paths:
               schema:
                 type: "array"
                 items:
-                  $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportQuery.AnalysisSummary"
+                  $ref: "#/components/schemas/AnalysisSummary"
               examples:
                 sample:
                   $ref: "#/components/examples/FitAnalysisController_historyResponse"
@@ -369,7 +373,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+                $ref: "#/components/schemas/JobAccepted"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
@@ -410,7 +414,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.Overview"
+                $ref: "#/components/schemas/Overview"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.guide.application.GuideViews.Overview"
@@ -450,7 +454,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+                $ref: "#/components/schemas/RatingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
@@ -490,7 +494,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.feedback.api.RatingController.RatingRequest"
+              $ref: "#/components/schemas/RatingRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.feedback.api.RatingController.RatingRequest"
@@ -500,7 +504,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+                $ref: "#/components/schemas/RatingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
@@ -552,7 +556,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.Guide"
+                $ref: "#/components/schemas/Guide"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.guide.application.GuideViews.Guide"
@@ -601,7 +605,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.guide.api.WritingGuideController.GenerateRequest"
+              $ref: "#/components/schemas/GenerateRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.guide.api.WritingGuideController.GenerateRequest"
@@ -610,7 +614,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+                $ref: "#/components/schemas/JobAccepted"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
@@ -651,7 +655,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView"
+                $ref: "#/components/schemas/FitReportView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.matching.application.FitReportView"
@@ -710,7 +714,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.member.application.MemberService.MemberView"
+                $ref: "#/components/schemas/MemberView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.member.application.MemberService.MemberView"
@@ -745,7 +749,7 @@ paths:
               schema:
                 type: "array"
                 items:
-                  $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerResponse"
+                  $ref: "#/components/schemas/CareerResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/CareerController_listResponse"
@@ -776,7 +780,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerRequest"
+              $ref: "#/components/schemas/CareerRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerRequest"
@@ -786,7 +790,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerResponse"
+                $ref: "#/components/schemas/CareerResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerResponse"
@@ -859,7 +863,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerRequest"
+              $ref: "#/components/schemas/CareerRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerRequest"
@@ -869,7 +873,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.profile.api.CareerController.CareerResponse"
+                $ref: "#/components/schemas/CareerResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.profile.api.CareerController.CareerResponse"
@@ -903,7 +907,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.member.application.MemberService.MemberView"
+                $ref: "#/components/schemas/MemberView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.member.application.MemberService.MemberView"
@@ -937,7 +941,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Library"
+                $ref: "#/components/schemas/Library"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.library.LibraryController.Library"
@@ -970,7 +974,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Onboarding"
+                $ref: "#/components/schemas/Onboarding"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.library.LibraryController.Onboarding"
@@ -1005,7 +1009,7 @@ paths:
               schema:
                 type: "array"
                 items:
-                  $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+                  $ref: "#/components/schemas/UserSkillResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/UserSkillController_listResponse"
@@ -1036,7 +1040,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest"
+              $ref: "#/components/schemas/AddUserSkillRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest"
@@ -1046,7 +1050,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+                $ref: "#/components/schemas/UserSkillResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
@@ -1055,7 +1059,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+                $ref: "#/components/schemas/UserSkillResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
@@ -1128,7 +1132,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest"
+              $ref: "#/components/schemas/ChangeLevelRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest"
@@ -1138,7 +1142,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
+                $ref: "#/components/schemas/UserSkillResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.profile.api.UserSkillController.UserSkillResponse"
@@ -1174,7 +1178,7 @@ paths:
               schema:
                 type: "array"
                 items:
-                  $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Summary"
+                  $ref: "#/components/schemas/Summary"
               examples:
                 sample:
                   $ref: "#/components/examples/ProjectController_listResponse"
@@ -1205,7 +1209,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.DraftRequest"
+              $ref: "#/components/schemas/DraftRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.DraftRequest"
@@ -1214,7 +1218,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+                $ref: "#/components/schemas/Detail"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
@@ -1288,7 +1292,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+                $ref: "#/components/schemas/Detail"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
@@ -1326,7 +1330,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.DraftRequest"
+              $ref: "#/components/schemas/DraftRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.DraftRequest"
@@ -1336,7 +1340,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+                $ref: "#/components/schemas/Detail"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
@@ -1377,7 +1381,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1417,7 +1421,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.EpisodeRequest"
+              $ref: "#/components/schemas/EpisodeRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.EpisodeRequest"
@@ -1427,7 +1431,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1473,7 +1477,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.EpisodeRequest"
+              $ref: "#/components/schemas/EpisodeRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.EpisodeRequest"
@@ -1483,7 +1487,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1534,7 +1538,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.AnswerRequest"
+              $ref: "#/components/schemas/AnswerRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.AnswerRequest"
@@ -1544,7 +1548,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+                $ref: "#/components/schemas/JobAccepted"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
@@ -1596,7 +1600,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1643,7 +1647,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1690,7 +1694,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1736,7 +1740,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.RestoreRequest"
+              $ref: "#/components/schemas/RestoreRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.RestoreRequest"
@@ -1746,7 +1750,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1792,7 +1796,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.FeedbackRequest"
+              $ref: "#/components/schemas/FeedbackRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.FeedbackRequest"
@@ -1802,7 +1806,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+                $ref: "#/components/schemas/JobAccepted"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
@@ -1849,7 +1853,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -1890,7 +1894,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+                $ref: "#/components/schemas/RatingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
@@ -1930,7 +1934,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.feedback.api.RatingController.RatingRequest"
+              $ref: "#/components/schemas/RatingRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.feedback.api.RatingController.RatingRequest"
@@ -1940,7 +1944,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.feedback.application.RatingService.RatingView"
+                $ref: "#/components/schemas/RatingView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.feedback.application.RatingService.RatingView"
@@ -1981,7 +1985,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+                $ref: "#/components/schemas/Detail"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
@@ -2021,7 +2025,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.FeedbackRequest"
+              $ref: "#/components/schemas/FeedbackRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.FeedbackRequest"
@@ -2031,7 +2035,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+                $ref: "#/components/schemas/JobAccepted"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
@@ -2072,7 +2076,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Review"
+                $ref: "#/components/schemas/Review"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Review"
@@ -2112,7 +2116,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.Detail"
+                $ref: "#/components/schemas/Detail"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.project.application.ProjectViews.Detail"
@@ -2152,7 +2156,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/com.nerdnam.project.api.ProjectController.NewSkillRequest"
+              $ref: "#/components/schemas/NewSkillRequest"
             examples:
               sample:
                 $ref: "#/components/examples/com.nerdnam.project.api.ProjectController.NewSkillRequest"
@@ -2162,7 +2166,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.profile.application.UserSkillView"
+                $ref: "#/components/schemas/UserSkillView"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.profile.application.UserSkillView"
@@ -2203,7 +2207,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/com.nerdnam.aijob.api.JobAccepted"
+                $ref: "#/components/schemas/JobAccepted"
               examples:
                 sample:
                   $ref: "#/components/examples/com.nerdnam.aijob.api.JobAccepted"
@@ -2256,7 +2260,7 @@ paths:
               schema:
                 type: "array"
                 items:
-                  $ref: "#/components/schemas/com.nerdnam.skill.api.SkillController.SkillResponse"
+                  $ref: "#/components/schemas/SkillResponse"
               examples:
                 sample:
                   $ref: "#/components/examples/SkillController_autocompleteResponse"
@@ -2326,2190 +2330,6 @@ paths:
       description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
 components:
   schemas:
-    com.nerdnam.aijob.api.JobAccepted:
-      type: "object"
-      properties:
-        jobId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required:
-      - "jobId"
-    com.nerdnam.aijob.application.AiJobView:
-      type: "object"
-      properties:
-        failureCode:
-          anyOf:
-          - type: "string"
-            enum:
-            - "gpu_unavailable"
-            - "ai_error"
-            - "timeout"
-            - "internal"
-          - type: "null"
-        finishedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        jobType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "restructure"
-            - "fit_analysis"
-            - "writing_guide"
-          - type: "null"
-        lockScope:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        mode:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        requestedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        resultId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "in_progress"
-            - "completed"
-            - "failed"
-          - type: "null"
-        targetId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        targetType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "project"
-            - "job_posting"
-            - "fit_analysis"
-          - type: "null"
-      required:
-      - "id"
-      - "jobType"
-      - "mode"
-      - "targetType"
-      - "targetId"
-      - "lockScope"
-      - "status"
-      - "failureCode"
-      - "resultId"
-      - "requestedAt"
-      - "finishedAt"
-    com.nerdnam.feedback.api.RatingController.RatingRequest:
-      type: "object"
-      properties:
-        comment:
-          anyOf:
-          - type: "string"
-            maxLength: 300
-            minLength: 0
-          - type: "null"
-        score:
-          type: "integer"
-          format: "int32"
-          maximum: 5
-          minimum: 1
-      required:
-      - "score"
-    com.nerdnam.feedback.application.RatingService.RatingView:
-      type: "object"
-      properties:
-        comment:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        score:
-          type: "integer"
-          format: "int32"
-        targetId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        targetType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "episode_generation"
-            - "guide"
-          - type: "null"
-        updatedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-      required:
-      - "targetType"
-      - "targetId"
-      - "score"
-      - "comment"
-      - "updatedAt"
-    com.nerdnam.guide.api.WritingGuideController.GenerateRequest:
-      type: "object"
-      properties:
-        feedback:
-          anyOf:
-          - type: "string"
-            maxLength: 2000
-            minLength: 0
-          - type: "null"
-      required: []
-    com.nerdnam.guide.application.GuideViews.Citation:
-      type: "object"
-      properties:
-        chunkId:
-          type: "integer"
-          format: "int64"
-        deleted:
-          type: "boolean"
-          description: "삭제한 프로젝트·사례 근거면 true. 이름은 남기고 projectId는 null, 원본 보기 버튼은 숨긴다."
-        label:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        projectId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        requirementCount:
-          type: "integer"
-          format: "int32"
-        reregistering:
-          type: "boolean"
-        sourceId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        sourceType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "skill"
-            - "career"
-            - "project_summary"
-            - "episode"
-          - type: "null"
-      required:
-      - "chunkId"
-      - "sourceType"
-      - "sourceId"
-      - "projectId"
-      - "label"
-      - "requirementCount"
-      - "deleted"
-      - "reregistering"
-    com.nerdnam.guide.application.GuideViews.Guide:
-      type: "object"
-      properties:
-        citations:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.Citation"
-          - type: "null"
-        completedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        content:
-          anyOf:
-          - type: "object"
-            additionalProperties: {}
-            description: "탭별 내용은 C-04 v0.2 GuideResponse.content를 보존하고 cited_chunk_ids를 추가한다. sources의 이름·원본 id는 별도 citations 목록으로 연결한다. 로컬 스텁은 형식이 다를 수 있다."
-            example:
-              tab: "motive"
-              message: "결제 성능 문제를 풀어 본 경험을, 더 큰 결제 트래픽에서 이어 가고 싶다."
-              outline:
-              - title: "회사가 지금 풀고 있는 문제"
-                detail: "공고의 주요 업무 “대용량 트래픽 대응을 위한 아키텍처 개선”에서 출발하세요. 회사 서비스와 최근 소식은 직접 확인해 채우세요: [회사 관련 사실]"
-                sources: []
-              - title: "내가 겪은 비슷한 문제"
-                detail: "프로모션 피크에 결제 승인 응답이 1.2초까지 늘었던 상황"
-                sources:
-                - 531
-              - title: "합류하면 기여할 지점"
-                detail: "캐시와 비동기 분리로 병목을 줄인 방식을 결제 승인·정산 시스템 개선에 잇기"
-                sources:
-                - 531
-              keywords:
-              - "결제 승인"
-              - "대용량 트래픽"
-              - "아키텍처 개선"
-              avoid:
-              - "회사 칭찬만 나열하기"
-              - "확인하지 않은 회사 정보 쓰기"
-              cited_chunk_ids:
-              - 531
-          - type: "null"
-        createdAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        feedback:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        generationNo:
-          type: "integer"
-          format: "int32"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        path:
-          anyOf:
-          - type: "string"
-            enum:
-            - "motive"
-            - "intro"
-            - "portfolio"
-            - "career"
-            - "image"
-          - type: "null"
-        runningJobId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "generating"
-            - "completed"
-            - "failed"
-          - type: "null"
-        tab:
-          anyOf:
-          - type: "string"
-            enum:
-            - "motivation"
-            - "self_introduction"
-            - "portfolio"
-            - "career_description"
-            - "image_prompt"
-          - type: "null"
-      required:
-      - "id"
-      - "tab"
-      - "path"
-      - "generationNo"
-      - "status"
-      - "content"
-      - "feedback"
-      - "citations"
-      - "createdAt"
-      - "completedAt"
-      - "runningJobId"
-    com.nerdnam.guide.application.GuideViews.Overview:
-      type: "object"
-      properties:
-        analysisId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        positionName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        postingId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        tabs:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.guide.application.GuideViews.TabStatus"
-          - type: "null"
-      required:
-      - "postingId"
-      - "companyName"
-      - "positionName"
-      - "analysisId"
-      - "tabs"
-    com.nerdnam.guide.application.GuideViews.TabStatus:
-      type: "object"
-      properties:
-        generationNo:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        path:
-          anyOf:
-          - type: "string"
-            enum:
-            - "motive"
-            - "intro"
-            - "portfolio"
-            - "career"
-            - "image"
-          - type: "null"
-        runningJobId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "generating"
-            - "completed"
-            - "failed"
-          - type: "null"
-        tab:
-          anyOf:
-          - type: "string"
-            enum:
-            - "motivation"
-            - "self_introduction"
-            - "portfolio"
-            - "career_description"
-            - "image_prompt"
-          - type: "null"
-      required:
-      - "tab"
-      - "path"
-      - "status"
-      - "generationNo"
-      - "runningJobId"
-    com.nerdnam.jd.api.JobPostingController.PostingRequest:
-      type: "object"
-      properties:
-        companyIntro:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        positionName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        postingUrl:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        preferred:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        required:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        tasks:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        version:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required: []
-    com.nerdnam.jd.application.JobPostingView:
-      type: "object"
-      properties:
-        companyIntro:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        createdAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        positionName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        postingUrl:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        preferred:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView.RequirementView"
-          - type: "null"
-        required:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.jd.application.JobPostingView.RequirementView"
-          - type: "null"
-        tasks:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        updatedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        version:
-          type: "integer"
-          format: "int64"
-      required:
-      - "id"
-      - "companyName"
-      - "positionName"
-      - "postingUrl"
-      - "companyIntro"
-      - "required"
-      - "preferred"
-      - "tasks"
-      - "version"
-      - "createdAt"
-      - "updatedAt"
-    com.nerdnam.jd.application.JobPostingView.RequirementView:
-      type: "object"
-      properties:
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        minYears:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        text:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "text"
-      - "skills"
-      - "minYears"
-    com.nerdnam.library.LibraryController.CareerSummary:
-      type: "object"
-      properties:
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        endMonth:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        jobTitle:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        startMonth:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        teamName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "companyName"
-      - "teamName"
-      - "jobTitle"
-      - "startMonth"
-      - "endMonth"
-    com.nerdnam.library.LibraryController.Library:
-      type: "object"
-      properties:
-        careers:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.library.LibraryController.CareerSummary"
-          - type: "null"
-        projects:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectLibraryQuery.LibraryProject"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.library.LibraryController.SkillSummary"
-          - type: "null"
-        stats:
-          anyOf:
-          - $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Stats"
-          - type: "null"
-      required:
-      - "stats"
-      - "projects"
-      - "careers"
-      - "skills"
-    com.nerdnam.library.LibraryController.Onboarding:
-      type: "object"
-      properties:
-        nextStep:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        reviewingProjectId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        stats:
-          anyOf:
-          - $ref: "#/components/schemas/com.nerdnam.library.LibraryController.Stats"
-          - type: "null"
-      required:
-      - "stats"
-      - "reviewingProjectId"
-      - "nextStep"
-    com.nerdnam.library.LibraryController.SkillSummary:
-      type: "object"
-      properties:
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        level:
-          type: "integer"
-          format: "int32"
-        name:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "name"
-      - "level"
-    com.nerdnam.library.LibraryController.Stats:
-      type: "object"
-      properties:
-        careerCount:
-          type: "integer"
-          format: "int32"
-        confirmedEpisodeCount:
-          type: "integer"
-          format: "int32"
-        confirmedProjectCount:
-          type: "integer"
-          format: "int32"
-        projectCount:
-          type: "integer"
-          format: "int32"
-        skillCount:
-          type: "integer"
-          format: "int32"
-      required:
-      - "skillCount"
-      - "careerCount"
-      - "projectCount"
-      - "confirmedProjectCount"
-      - "confirmedEpisodeCount"
-    com.nerdnam.matching.application.FitReportQuery.AnalysisSummary:
-      type: "object"
-      properties:
-        analysisId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        completedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        failureCode:
-          anyOf:
-          - type: "string"
-            enum:
-            - "gpu_unavailable"
-            - "ai_error"
-            - "timeout"
-            - "internal"
-          - type: "null"
-        requestedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "in_progress"
-            - "completed"
-            - "failed"
-          - type: "null"
-      required:
-      - "analysisId"
-      - "status"
-      - "failureCode"
-      - "requestedAt"
-      - "completedAt"
-    com.nerdnam.matching.application.FitReportView:
-      type: "object"
-      properties:
-        analysisId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        completedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        diagnosis:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        failureCode:
-          anyOf:
-          - type: "string"
-            enum:
-            - "gpu_unavailable"
-            - "ai_error"
-            - "timeout"
-            - "internal"
-          - type: "null"
-        matches:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView.MatchView"
-          - type: "null"
-        positionName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        postingId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        preferred:
-          anyOf:
-          - $ref: "#/components/schemas/com.nerdnam.matching.domain.FitReport.Count"
-          - type: "null"
-        requestedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        required:
-          anyOf:
-          - $ref: "#/components/schemas/com.nerdnam.matching.domain.FitReport.Count"
-          - type: "null"
-        runningJobId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "in_progress"
-            - "completed"
-            - "failed"
-          - type: "null"
-      required:
-      - "analysisId"
-      - "postingId"
-      - "companyName"
-      - "positionName"
-      - "status"
-      - "failureCode"
-      - "requestedAt"
-      - "completedAt"
-      - "required"
-      - "preferred"
-      - "diagnosis"
-      - "matches"
-      - "runningJobId"
-    com.nerdnam.matching.application.FitReportView.EvidenceView:
-      type: "object"
-      properties:
-        chunkId:
-          type: "integer"
-          format: "int64"
-        deleted:
-          type: "boolean"
-          description: "삭제한 프로젝트·사례 근거면 true. 이름은 남기고 projectId는 null, 원본 보기 버튼은 숨긴다."
-        label:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        projectId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        rank:
-          type: "integer"
-          format: "int32"
-        reregistering:
-          type: "boolean"
-          description: "프로젝트·사례 근거는 현재 재등록 여부. true면 S06 프로젝트 카드로 이동한다. 기술·경력은 false."
-        snippet:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        sourceId:
-          type: "integer"
-          format: "int64"
-        sourceType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "skill"
-            - "career"
-            - "project_summary"
-            - "episode"
-          - type: "null"
-        sourceVersion:
-          type: "integer"
-          format: "int32"
-      required:
-      - "rank"
-      - "chunkId"
-      - "sourceType"
-      - "sourceId"
-      - "sourceVersion"
-      - "projectId"
-      - "reregistering"
-      - "deleted"
-      - "label"
-      - "snippet"
-    com.nerdnam.matching.application.FitReportView.MatchView:
-      type: "object"
-      properties:
-        evidences:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.matching.application.FitReportView.EvidenceView"
-          - type: "null"
-        gapGuide:
-          anyOf:
-          - $ref: "#/components/schemas/com.nerdnam.matching.domain.GapGuide"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        llmVerdict:
-          anyOf:
-          - type: "string"
-            enum:
-            - "unmet"
-            - "partial"
-            - "met"
-          - type: "null"
-        minYears:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        reason:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        requirementId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        ruleVerdict:
-          anyOf:
-          - type: "string"
-            enum:
-            - "unmet"
-            - "partial"
-            - "met"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        text:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        type:
-          anyOf:
-          - type: "string"
-            enum:
-            - "required"
-            - "preferred"
-          - type: "null"
-        verdict:
-          anyOf:
-          - type: "string"
-            enum:
-            - "unmet"
-            - "partial"
-            - "met"
-          - type: "null"
-      required:
-      - "id"
-      - "requirementId"
-      - "type"
-      - "text"
-      - "skills"
-      - "minYears"
-      - "ruleVerdict"
-      - "llmVerdict"
-      - "verdict"
-      - "reason"
-      - "evidences"
-      - "gapGuide"
-    com.nerdnam.matching.application.PostingListQuery.PostingSummary:
-      type: "object"
-      properties:
-        analysisId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        analyzedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        positionName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        preferredMet:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        preferredPartial:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        preferredTotal:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        requiredMet:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        requiredTotal:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "in_progress"
-            - "completed"
-            - "failed"
-            - "draft"
-          - type: "null"
-        updatedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-      required:
-      - "id"
-      - "companyName"
-      - "positionName"
-      - "status"
-      - "analysisId"
-      - "analyzedAt"
-      - "requiredMet"
-      - "requiredTotal"
-      - "preferredMet"
-      - "preferredPartial"
-      - "preferredTotal"
-      - "updatedAt"
-    com.nerdnam.matching.domain.FitReport.Count:
-      type: "object"
-      properties:
-        met:
-          type: "integer"
-          format: "int32"
-        partial:
-          type: "integer"
-          format: "int32"
-        total:
-          type: "integer"
-          format: "int32"
-        unmet:
-          type: "integer"
-          format: "int32"
-      required:
-      - "met"
-      - "partial"
-      - "unmet"
-      - "total"
-    com.nerdnam.matching.domain.GapGuide:
-      type: "object"
-      properties:
-        advice:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        avoid:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        citedChunkIds:
-          anyOf:
-          - type: "array"
-            items:
-              type: "integer"
-              format: "int64"
-          - type: "null"
-        source:
-          anyOf:
-          - type: "string"
-            enum:
-            - "ai"
-            - "fallback"
-          - type: "null"
-      required:
-      - "advice"
-      - "avoid"
-      - "citedChunkIds"
-      - "source"
-    com.nerdnam.member.api.AuthController.CsrfView:
-      type: "object"
-      properties:
-        headerName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        token:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "headerName"
-      - "token"
-    com.nerdnam.member.application.MemberService.MemberView:
-      type: "object"
-      properties:
-        consentRequired:
-          type: "boolean"
-        displayName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        email:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        termsVersion:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "displayName"
-      - "email"
-      - "consentRequired"
-      - "termsVersion"
-    com.nerdnam.profile.api.CareerController.CareerRequest:
-      type: "object"
-      properties:
-        companyName:
-          type: "string"
-          maxLength: 100
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-        duties:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        employmentType:
-          type: "string"
-          enum:
-          - "full_time"
-          - "contract"
-          - "intern"
-          - "freelance"
-        endMonth:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        jobTitle:
-          type: "string"
-          maxLength: 100
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-        positionTitle:
-          anyOf:
-          - type: "string"
-            maxLength: 50
-            minLength: 0
-          - type: "null"
-        startMonth:
-          type: "string"
-          example: "2026-10"
-          pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-        teamName:
-          type: "string"
-          maxLength: 100
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-        userSkillIds:
-          anyOf:
-          - type: "array"
-            items:
-              type: "integer"
-              format: "int64"
-            uniqueItems: true
-          - type: "null"
-        version:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required:
-      - "companyName"
-      - "employmentType"
-      - "jobTitle"
-      - "startMonth"
-      - "teamName"
-    com.nerdnam.profile.api.CareerController.CareerResponse:
-      type: "object"
-      properties:
-        companyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        current:
-          type: "boolean"
-        duties:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        employmentType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "full_time"
-            - "contract"
-            - "intern"
-            - "freelance"
-          - type: "null"
-        endMonth:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        jobTitle:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        positionTitle:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        startMonth:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        teamName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        userSkillIds:
-          anyOf:
-          - type: "array"
-            items:
-              type: "integer"
-              format: "int64"
-            uniqueItems: true
-          - type: "null"
-        version:
-          type: "integer"
-          format: "int64"
-      required:
-      - "id"
-      - "companyName"
-      - "teamName"
-      - "jobTitle"
-      - "positionTitle"
-      - "employmentType"
-      - "startMonth"
-      - "endMonth"
-      - "current"
-      - "duties"
-      - "userSkillIds"
-      - "version"
-    com.nerdnam.profile.api.UserSkillController.AddUserSkillRequest:
-      type: "object"
-      properties:
-        category:
-          anyOf:
-          - type: "string"
-            enum:
-            - "language"
-            - "framework"
-            - "database"
-            - "infra"
-            - "tool"
-          - type: "null"
-        level:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-            maximum: 4
-            minimum: 1
-          - type: "null"
-        name:
-          type: "string"
-          maxLength: 100
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-      required:
-      - "name"
-    com.nerdnam.profile.api.UserSkillController.ChangeLevelRequest:
-      type: "object"
-      properties:
-        level:
-          type: "integer"
-          format: "int32"
-          maximum: 4
-          minimum: 1
-      required:
-      - "level"
-    com.nerdnam.profile.api.UserSkillController.UserSkillResponse:
-      type: "object"
-      properties:
-        category:
-          anyOf:
-          - type: "string"
-            enum:
-            - "language"
-            - "framework"
-            - "database"
-            - "infra"
-            - "tool"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        level:
-          type: "integer"
-          format: "int32"
-        levelName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        name:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        skillId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required:
-      - "id"
-      - "skillId"
-      - "name"
-      - "category"
-      - "level"
-      - "levelName"
-    com.nerdnam.profile.application.UserSkillView:
-      type: "object"
-      properties:
-        category:
-          anyOf:
-          - type: "string"
-            enum:
-            - "language"
-            - "framework"
-            - "database"
-            - "infra"
-            - "tool"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        name:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        proficiency:
-          anyOf:
-          - type: "string"
-            enum:
-            - "learning"
-            - "working"
-            - "proficient"
-            - "expert"
-          - type: "null"
-        skillId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required:
-      - "id"
-      - "skillId"
-      - "name"
-      - "category"
-      - "proficiency"
-    com.nerdnam.project.api.ProjectController.AnswerRequest:
-      type: "object"
-      properties:
-        answer:
-          type: "string"
-          maxLength: 2000
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-      required:
-      - "answer"
-    com.nerdnam.project.api.ProjectController.DraftRequest:
-      type: "object"
-      properties:
-        affiliation:
-          anyOf:
-          - type: "string"
-            enum:
-            - "career"
-            - "personal"
-            - "team"
-          - type: "null"
-        careerId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        links:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        periodEnd:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        periodStart:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        rawText:
-          anyOf:
-          - type: "string"
-            maxLength: 20000
-            minLength: 0
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-            maxLength: 100
-            minLength: 0
-          - type: "null"
-        userSkillIds:
-          anyOf:
-          - type: "array"
-            items:
-              type: "integer"
-              format: "int64"
-            uniqueItems: true
-          - type: "null"
-        version:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required: []
-    com.nerdnam.project.api.ProjectController.EpisodeRequest:
-      type: "object"
-      properties:
-        metrics:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.Metric"
-          - type: "null"
-        problem:
-          anyOf:
-          - type: "string"
-            maxLength: 5000
-            minLength: 0
-          - type: "null"
-        result:
-          anyOf:
-          - type: "string"
-            maxLength: 5000
-            minLength: 0
-          - type: "null"
-        role:
-          anyOf:
-          - type: "string"
-            maxLength: 200
-            minLength: 0
-          - type: "null"
-        solution:
-          anyOf:
-          - type: "string"
-            maxLength: 5000
-            minLength: 0
-          - type: "null"
-        title:
-          type: "string"
-          maxLength: 100
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-      required:
-      - "title"
-    com.nerdnam.project.api.ProjectController.FeedbackRequest:
-      type: "object"
-      properties:
-        feedback:
-          type: "string"
-          maxLength: 2000
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-      required:
-      - "feedback"
-    com.nerdnam.project.api.ProjectController.NewSkillRequest:
-      type: "object"
-      properties:
-        category:
-          type: "string"
-          enum:
-          - "language"
-          - "framework"
-          - "database"
-          - "infra"
-          - "tool"
-        name:
-          type: "string"
-          maxLength: 100
-          minLength: 1
-          description: "공백만 입력할 수 없습니다."
-      required:
-      - "category"
-      - "name"
-    com.nerdnam.project.api.ProjectController.RestoreRequest:
-      type: "object"
-      properties:
-        versionNo:
-          type: "integer"
-          format: "int32"
-          minimum: 1
-      required:
-      - "versionNo"
-    com.nerdnam.project.application.ProjectLibraryQuery.ConfirmedEpisode:
-      type: "object"
-      properties:
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        summaryLine:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "title"
-      - "summaryLine"
-    com.nerdnam.project.application.ProjectLibraryQuery.LibraryProject:
-      type: "object"
-      properties:
-        affiliation:
-          anyOf:
-          - type: "string"
-            enum:
-            - "career"
-            - "personal"
-            - "team"
-          - type: "null"
-        careerCompanyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        confirmedEpisodes:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectLibraryQuery.ConfirmedEpisode"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        periodEnd:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        periodStart:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        reregistering:
-          type: "boolean"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SkillRef"
-          - type: "null"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "draft"
-            - "review"
-            - "confirmed"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "title"
-      - "status"
-      - "reregistering"
-      - "affiliation"
-      - "careerCompanyName"
-      - "periodStart"
-      - "periodEnd"
-      - "skills"
-      - "confirmedEpisodes"
-    com.nerdnam.project.application.ProjectViews.Detail:
-      type: "object"
-      properties:
-        affiliation:
-          anyOf:
-          - type: "string"
-            enum:
-            - "career"
-            - "personal"
-            - "team"
-          - type: "null"
-        careerCompanyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        careerId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        generationCount:
-          type: "integer"
-          format: "int32"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        links:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        periodEnd:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        periodStart:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        rawText:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        reregistering:
-          type: "boolean"
-        runningJobId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SkillRef"
-          - type: "null"
-        splitRound:
-          type: "integer"
-          format: "int32"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "draft"
-            - "review"
-            - "confirmed"
-          - type: "null"
-        supplements:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SupplementView"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        version:
-          type: "integer"
-          format: "int64"
-      required:
-      - "id"
-      - "title"
-      - "status"
-      - "reregistering"
-      - "affiliation"
-      - "careerId"
-      - "careerCompanyName"
-      - "periodStart"
-      - "periodEnd"
-      - "rawText"
-      - "skills"
-      - "links"
-      - "supplements"
-      - "splitRound"
-      - "generationCount"
-      - "version"
-      - "runningJobId"
-    com.nerdnam.project.application.ProjectViews.EpisodeView:
-      type: "object"
-      properties:
-        clarifications:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.Clarification"
-          - type: "null"
-        currentVersion:
-          type: "integer"
-          format: "int32"
-        displayOrder:
-          type: "integer"
-          format: "int32"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        metrics:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.Metric"
-          - type: "null"
-        origin:
-          anyOf:
-          - type: "string"
-            enum:
-            - "ai"
-            - "user"
-          - type: "null"
-        problem:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        result:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        role:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        solution:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        sourceSpans:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.SourceSpan"
-          - type: "null"
-        splitRound:
-          type: "integer"
-          format: "int32"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "review"
-            - "confirmed"
-            - "excluded"
-            - "superseded"
-            - "discarded"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        versions:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.VersionView"
-          - type: "null"
-      required:
-      - "id"
-      - "splitRound"
-      - "displayOrder"
-      - "origin"
-      - "status"
-      - "currentVersion"
-      - "title"
-      - "role"
-      - "problem"
-      - "solution"
-      - "result"
-      - "skills"
-      - "metrics"
-      - "sourceSpans"
-      - "clarifications"
-      - "versions"
-    com.nerdnam.project.application.ProjectViews.Review:
-      type: "object"
-      properties:
-        affiliation:
-          anyOf:
-          - type: "string"
-            enum:
-            - "career"
-            - "personal"
-            - "team"
-          - type: "null"
-        careerCompanyName:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        episodes:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.EpisodeView"
-          - type: "null"
-        generationCount:
-          type: "integer"
-          format: "int32"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        periodEnd:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        periodStart:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        rawText:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        reregistering:
-          type: "boolean"
-        runningJobId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SkillRef"
-          - type: "null"
-        sourceText:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        splitRound:
-          type: "integer"
-          format: "int32"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "draft"
-            - "review"
-            - "confirmed"
-          - type: "null"
-        supplements:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.application.ProjectViews.SupplementView"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "title"
-      - "status"
-      - "reregistering"
-      - "affiliation"
-      - "careerCompanyName"
-      - "periodStart"
-      - "periodEnd"
-      - "rawText"
-      - "sourceText"
-      - "supplements"
-      - "skills"
-      - "splitRound"
-      - "generationCount"
-      - "episodes"
-      - "runningJobId"
-    com.nerdnam.project.application.ProjectViews.SkillRef:
-      type: "object"
-      properties:
-        name:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        userSkillId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-      required:
-      - "userSkillId"
-      - "name"
-    com.nerdnam.project.application.ProjectViews.Summary:
-      type: "object"
-      properties:
-        affiliation:
-          anyOf:
-          - type: "string"
-            enum:
-            - "career"
-            - "personal"
-            - "team"
-          - type: "null"
-        careerId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        confirmedEpisodeCount:
-          type: "integer"
-          format: "int32"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        lastConfirmedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        periodEnd:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        periodStart:
-          anyOf:
-          - type: "string"
-            example: "2026-10"
-            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          - type: "null"
-        reregistering:
-          type: "boolean"
-        status:
-          anyOf:
-          - type: "string"
-            enum:
-            - "draft"
-            - "review"
-            - "confirmed"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        updatedAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-      required:
-      - "id"
-      - "title"
-      - "status"
-      - "reregistering"
-      - "affiliation"
-      - "careerId"
-      - "periodStart"
-      - "periodEnd"
-      - "confirmedEpisodeCount"
-      - "lastConfirmedAt"
-      - "updatedAt"
-    com.nerdnam.project.application.ProjectViews.SupplementView:
-      type: "object"
-      properties:
-        answer:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        createdAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        episodeId:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        question:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "episodeId"
-      - "question"
-      - "answer"
-      - "createdAt"
-    com.nerdnam.project.application.ProjectViews.VersionView:
-      type: "object"
-      properties:
-        changeType:
-          anyOf:
-          - type: "string"
-            enum:
-            - "ai_split"
-            - "ai_revision"
-            - "user_edit"
-            - "user_created"
-            - "restored"
-          - type: "null"
-        clarifications:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.Clarification"
-          - type: "null"
-        createdAt:
-          anyOf:
-          - type: "string"
-            format: "date-time"
-          - type: "null"
-        feedback:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        metrics:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.Metric"
-          - type: "null"
-        problem:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        restoredFrom:
-          anyOf:
-          - type: "integer"
-            format: "int32"
-          - type: "null"
-        result:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        role:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        skills:
-          anyOf:
-          - type: "array"
-            items:
-              type: "string"
-          - type: "null"
-        solution:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        sourceSpans:
-          anyOf:
-          - type: "array"
-            items:
-              $ref: "#/components/schemas/com.nerdnam.project.domain.SourceSpan"
-          - type: "null"
-        title:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        versionNo:
-          type: "integer"
-          format: "int32"
-      required:
-      - "versionNo"
-      - "changeType"
-      - "restoredFrom"
-      - "feedback"
-      - "createdAt"
-      - "title"
-      - "role"
-      - "problem"
-      - "solution"
-      - "result"
-      - "skills"
-      - "metrics"
-      - "sourceSpans"
-      - "clarifications"
-    com.nerdnam.project.domain.Clarification:
-      type: "object"
-      properties:
-        example:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        field:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        key:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        question:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "key"
-      - "field"
-      - "question"
-      - "example"
-    com.nerdnam.project.domain.Metric:
-      type: "object"
-      properties:
-        after:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        before:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        name:
-          anyOf:
-          - type: "string"
-          - type: "null"
-        source:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "name"
-      - "before"
-      - "after"
-      - "source"
-    com.nerdnam.project.domain.SourceSpan:
-      type: "object"
-      properties:
-        end:
-          type: "integer"
-          format: "int32"
-        start:
-          type: "integer"
-          format: "int32"
-      required:
-      - "start"
-      - "end"
-    com.nerdnam.skill.api.SkillController.SkillResponse:
-      type: "object"
-      properties:
-        category:
-          anyOf:
-          - type: "string"
-            enum:
-            - "language"
-            - "framework"
-            - "database"
-            - "infra"
-            - "tool"
-          - type: "null"
-        id:
-          anyOf:
-          - type: "integer"
-            format: "int64"
-          - type: "null"
-        name:
-          anyOf:
-          - type: "string"
-          - type: "null"
-      required:
-      - "id"
-      - "name"
-      - "category"
     ProblemDetail:
       type: "object"
       required:
@@ -4579,6 +2399,1907 @@ components:
               name:
                 type: "string"
       additionalProperties: true
+    JobAccepted:
+      type: "object"
+      properties:
+        jobId:
+          type: "integer"
+          format: "int64"
+      required:
+      - "jobId"
+      x-java-class: "com.nerdnam.aijob.api.JobAccepted"
+    AiJobView:
+      type: "object"
+      properties:
+        failureCode:
+          anyOf:
+          - type: "string"
+            enum:
+            - "gpu_unavailable"
+            - "ai_error"
+            - "timeout"
+            - "internal"
+          - type: "null"
+        finishedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        id:
+          type: "integer"
+          format: "int64"
+        jobType:
+          type: "string"
+          enum:
+          - "restructure"
+          - "fit_analysis"
+          - "writing_guide"
+        lockScope:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        mode:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        requestedAt:
+          type: "string"
+          format: "date-time"
+        resultId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          type: "string"
+          enum:
+          - "in_progress"
+          - "completed"
+          - "failed"
+        targetId:
+          type: "integer"
+          format: "int64"
+        targetType:
+          type: "string"
+          enum:
+          - "project"
+          - "job_posting"
+          - "fit_analysis"
+      required:
+      - "id"
+      - "jobType"
+      - "mode"
+      - "targetType"
+      - "targetId"
+      - "lockScope"
+      - "status"
+      - "failureCode"
+      - "resultId"
+      - "requestedAt"
+      - "finishedAt"
+      x-java-class: "com.nerdnam.aijob.application.AiJobView"
+    RatingRequest:
+      type: "object"
+      properties:
+        comment:
+          anyOf:
+          - type: "string"
+            maxLength: 300
+            minLength: 0
+          - type: "null"
+        score:
+          type: "integer"
+          format: "int32"
+          maximum: 5
+          minimum: 1
+      required:
+      - "score"
+      x-java-class: "com.nerdnam.feedback.api.RatingController$RatingRequest"
+    RatingView:
+      type: "object"
+      properties:
+        comment:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        score:
+          type: "integer"
+          format: "int32"
+        targetId:
+          type: "integer"
+          format: "int64"
+        targetType:
+          type: "string"
+          enum:
+          - "episode_generation"
+          - "guide"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+      required:
+      - "targetType"
+      - "targetId"
+      - "score"
+      - "comment"
+      - "updatedAt"
+      x-java-class: "com.nerdnam.feedback.application.RatingService$RatingView"
+    GenerateRequest:
+      type: "object"
+      properties:
+        feedback:
+          anyOf:
+          - type: "string"
+            maxLength: 2000
+            minLength: 0
+          - type: "null"
+      required: []
+      x-java-class: "com.nerdnam.guide.api.WritingGuideController$GenerateRequest"
+    Citation:
+      type: "object"
+      properties:
+        chunkId:
+          type: "integer"
+          format: "int64"
+        deleted:
+          type: "boolean"
+          description: "삭제한 프로젝트·사례 근거면 true. 이름은 남기고 projectId는 null, 원본 보기 버튼은 숨긴다."
+        label:
+          type: "string"
+        projectId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        requirementCount:
+          type: "integer"
+          format: "int32"
+        reregistering:
+          type: "boolean"
+        sourceId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        sourceType:
+          type: "string"
+          enum:
+          - "skill"
+          - "career"
+          - "project_summary"
+          - "episode"
+      required:
+      - "chunkId"
+      - "sourceType"
+      - "sourceId"
+      - "projectId"
+      - "label"
+      - "requirementCount"
+      - "deleted"
+      - "reregistering"
+      x-java-class: "com.nerdnam.guide.application.GuideViews$Citation"
+    Guide:
+      type: "object"
+      properties:
+        citations:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Citation"
+        completedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        content:
+          anyOf:
+          - type: "object"
+            additionalProperties: {}
+            description: "탭별 내용은 C-04 v0.2 GuideResponse.content를 보존하고 cited_chunk_ids를 추가한다. sources의 이름·원본 id는 별도 citations 목록으로 연결한다. 로컬 스텁은 형식이 다를 수 있다."
+            example:
+              tab: "motive"
+              message: "결제 성능 문제를 풀어 본 경험을, 더 큰 결제 트래픽에서 이어 가고 싶다."
+              outline:
+              - title: "회사가 지금 풀고 있는 문제"
+                detail: "공고의 주요 업무 “대용량 트래픽 대응을 위한 아키텍처 개선”에서 출발하세요. 회사 서비스와 최근 소식은 직접 확인해 채우세요: [회사 관련 사실]"
+                sources: []
+              - title: "내가 겪은 비슷한 문제"
+                detail: "프로모션 피크에 결제 승인 응답이 1.2초까지 늘었던 상황"
+                sources:
+                - 531
+              - title: "합류하면 기여할 지점"
+                detail: "캐시와 비동기 분리로 병목을 줄인 방식을 결제 승인·정산 시스템 개선에 잇기"
+                sources:
+                - 531
+              keywords:
+              - "결제 승인"
+              - "대용량 트래픽"
+              - "아키텍처 개선"
+              avoid:
+              - "회사 칭찬만 나열하기"
+              - "확인하지 않은 회사 정보 쓰기"
+              cited_chunk_ids:
+              - 531
+          - type: "null"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        feedback:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        generationNo:
+          type: "integer"
+          format: "int32"
+        id:
+          type: "integer"
+          format: "int64"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          type: "string"
+          enum:
+          - "generating"
+          - "completed"
+          - "failed"
+        tab:
+          type: "string"
+          enum:
+          - "motive"
+          - "intro"
+          - "portfolio"
+          - "career"
+          - "image"
+      required:
+      - "id"
+      - "tab"
+      - "generationNo"
+      - "status"
+      - "content"
+      - "feedback"
+      - "citations"
+      - "createdAt"
+      - "completedAt"
+      - "runningJobId"
+      x-java-class: "com.nerdnam.guide.application.GuideViews$Guide"
+    Overview:
+      type: "object"
+      properties:
+        analysisId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        companyName:
+          type: "string"
+        positionName:
+          type: "string"
+        postingId:
+          type: "integer"
+          format: "int64"
+        tabs:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/TabStatus"
+      required:
+      - "postingId"
+      - "companyName"
+      - "positionName"
+      - "analysisId"
+      - "tabs"
+      x-java-class: "com.nerdnam.guide.application.GuideViews$Overview"
+    TabStatus:
+      type: "object"
+      properties:
+        generationNo:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          anyOf:
+          - type: "string"
+            enum:
+            - "generating"
+            - "completed"
+            - "failed"
+          - type: "null"
+        tab:
+          type: "string"
+          enum:
+          - "motive"
+          - "intro"
+          - "portfolio"
+          - "career"
+          - "image"
+      required:
+      - "tab"
+      - "status"
+      - "generationNo"
+      - "runningJobId"
+      x-java-class: "com.nerdnam.guide.application.GuideViews$TabStatus"
+    PostingRequest:
+      type: "object"
+      properties:
+        companyIntro:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        companyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        positionName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        postingUrl:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        preferred:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        required:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        tasks:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        version:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required: []
+      x-java-class: "com.nerdnam.jd.api.JobPostingController$PostingRequest"
+    JobPostingView:
+      type: "object"
+      properties:
+        companyIntro:
+          type: "string"
+        companyName:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        id:
+          type: "integer"
+          format: "int64"
+        positionName:
+          type: "string"
+        postingUrl:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        preferred:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/RequirementView"
+        required:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/RequirementView"
+        tasks:
+          type: "array"
+          items:
+            type: "string"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "companyName"
+      - "positionName"
+      - "postingUrl"
+      - "companyIntro"
+      - "required"
+      - "preferred"
+      - "tasks"
+      - "version"
+      - "createdAt"
+      - "updatedAt"
+      x-java-class: "com.nerdnam.jd.application.JobPostingView"
+    RequirementView:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        minYears:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        skills:
+          type: "array"
+          items:
+            type: "string"
+        text:
+          type: "string"
+      required:
+      - "id"
+      - "text"
+      - "skills"
+      - "minYears"
+      x-java-class: "com.nerdnam.jd.application.JobPostingView$RequirementView"
+    CareerSummary:
+      type: "object"
+      properties:
+        companyName:
+          type: "string"
+        endMonth:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        id:
+          type: "integer"
+          format: "int64"
+        jobTitle:
+          type: "string"
+        startMonth:
+          type: "string"
+          example: "2026-10"
+          pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+        teamName:
+          type: "string"
+      required:
+      - "id"
+      - "companyName"
+      - "teamName"
+      - "jobTitle"
+      - "startMonth"
+      - "endMonth"
+      x-java-class: "com.nerdnam.library.LibraryController$CareerSummary"
+    Library:
+      type: "object"
+      properties:
+        careers:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/CareerSummary"
+        projects:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/LibraryProject"
+        skills:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SkillSummary"
+        stats:
+          $ref: "#/components/schemas/Stats"
+      required:
+      - "stats"
+      - "projects"
+      - "careers"
+      - "skills"
+      x-java-class: "com.nerdnam.library.LibraryController$Library"
+    Onboarding:
+      type: "object"
+      properties:
+        nextStep:
+          type: "string"
+        reviewingProjectId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        stats:
+          $ref: "#/components/schemas/Stats"
+      required:
+      - "stats"
+      - "reviewingProjectId"
+      - "nextStep"
+      x-java-class: "com.nerdnam.library.LibraryController$Onboarding"
+    SkillSummary:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        level:
+          type: "integer"
+          format: "int32"
+        name:
+          type: "string"
+      required:
+      - "id"
+      - "name"
+      - "level"
+      x-java-class: "com.nerdnam.library.LibraryController$SkillSummary"
+    Stats:
+      type: "object"
+      properties:
+        careerCount:
+          type: "integer"
+          format: "int32"
+        confirmedEpisodeCount:
+          type: "integer"
+          format: "int32"
+        confirmedProjectCount:
+          type: "integer"
+          format: "int32"
+        projectCount:
+          type: "integer"
+          format: "int32"
+        skillCount:
+          type: "integer"
+          format: "int32"
+      required:
+      - "skillCount"
+      - "careerCount"
+      - "projectCount"
+      - "confirmedProjectCount"
+      - "confirmedEpisodeCount"
+      x-java-class: "com.nerdnam.library.LibraryController$Stats"
+    AnalysisSummary:
+      type: "object"
+      properties:
+        analysisId:
+          type: "integer"
+          format: "int64"
+        completedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        failureCode:
+          anyOf:
+          - type: "string"
+            enum:
+            - "gpu_unavailable"
+            - "ai_error"
+            - "timeout"
+            - "internal"
+          - type: "null"
+        requestedAt:
+          type: "string"
+          format: "date-time"
+        status:
+          type: "string"
+          enum:
+          - "in_progress"
+          - "completed"
+          - "failed"
+      required:
+      - "analysisId"
+      - "status"
+      - "failureCode"
+      - "requestedAt"
+      - "completedAt"
+      x-java-class: "com.nerdnam.matching.application.FitReportQuery$AnalysisSummary"
+    FitReportView:
+      type: "object"
+      properties:
+        analysisId:
+          type: "integer"
+          format: "int64"
+        companyName:
+          type: "string"
+        completedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        diagnosis:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        failureCode:
+          anyOf:
+          - type: "string"
+            enum:
+            - "gpu_unavailable"
+            - "ai_error"
+            - "timeout"
+            - "internal"
+          - type: "null"
+        matches:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/MatchView"
+        positionName:
+          type: "string"
+        postingId:
+          type: "integer"
+          format: "int64"
+        preferred:
+          anyOf:
+          - $ref: "#/components/schemas/Count"
+          - type: "null"
+        requestedAt:
+          type: "string"
+          format: "date-time"
+        required:
+          anyOf:
+          - $ref: "#/components/schemas/Count"
+          - type: "null"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        status:
+          type: "string"
+          enum:
+          - "in_progress"
+          - "completed"
+          - "failed"
+      required:
+      - "analysisId"
+      - "postingId"
+      - "companyName"
+      - "positionName"
+      - "status"
+      - "failureCode"
+      - "requestedAt"
+      - "completedAt"
+      - "required"
+      - "preferred"
+      - "diagnosis"
+      - "matches"
+      - "runningJobId"
+      x-java-class: "com.nerdnam.matching.application.FitReportView"
+    EvidenceView:
+      type: "object"
+      properties:
+        chunkId:
+          type: "integer"
+          format: "int64"
+        deleted:
+          type: "boolean"
+          description: "삭제한 프로젝트·사례 근거면 true. 이름은 남기고 projectId는 null, 원본 보기 버튼은 숨긴다."
+        label:
+          type: "string"
+        projectId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        rank:
+          type: "integer"
+          format: "int32"
+        reregistering:
+          type: "boolean"
+          description: "프로젝트·사례 근거는 현재 재등록 여부. true면 S06 프로젝트 카드로 이동한다. 기술·경력은 false."
+        snippet:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        sourceId:
+          type: "integer"
+          format: "int64"
+        sourceType:
+          type: "string"
+          enum:
+          - "skill"
+          - "career"
+          - "project_summary"
+          - "episode"
+        sourceVersion:
+          type: "integer"
+          format: "int32"
+      required:
+      - "rank"
+      - "chunkId"
+      - "sourceType"
+      - "sourceId"
+      - "sourceVersion"
+      - "projectId"
+      - "reregistering"
+      - "deleted"
+      - "label"
+      - "snippet"
+      x-java-class: "com.nerdnam.matching.application.FitReportView$EvidenceView"
+    MatchView:
+      type: "object"
+      properties:
+        evidences:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/EvidenceView"
+        gapGuide:
+          anyOf:
+          - $ref: "#/components/schemas/GapGuide"
+          - type: "null"
+        id:
+          type: "integer"
+          format: "int64"
+        llmVerdict:
+          anyOf:
+          - type: "string"
+            enum:
+            - "unmet"
+            - "partial"
+            - "met"
+          - type: "null"
+        minYears:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        reason:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        requirementId:
+          type: "integer"
+          format: "int64"
+        ruleVerdict:
+          anyOf:
+          - type: "string"
+            enum:
+            - "unmet"
+            - "partial"
+            - "met"
+          - type: "null"
+        skills:
+          type: "array"
+          items:
+            type: "string"
+        text:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+          - "required"
+          - "preferred"
+        verdict:
+          type: "string"
+          enum:
+          - "unmet"
+          - "partial"
+          - "met"
+      required:
+      - "id"
+      - "requirementId"
+      - "type"
+      - "text"
+      - "skills"
+      - "minYears"
+      - "ruleVerdict"
+      - "llmVerdict"
+      - "verdict"
+      - "reason"
+      - "evidences"
+      - "gapGuide"
+      x-java-class: "com.nerdnam.matching.application.FitReportView$MatchView"
+    PostingSummary:
+      type: "object"
+      properties:
+        analysisId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        analyzedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        companyName:
+          type: "string"
+        id:
+          type: "integer"
+          format: "int64"
+        positionName:
+          type: "string"
+        preferredMet:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        preferredPartial:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        preferredTotal:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        requiredMet:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        requiredTotal:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        status:
+          type: "string"
+          enum:
+          - "in_progress"
+          - "completed"
+          - "failed"
+          - "draft"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+      required:
+      - "id"
+      - "companyName"
+      - "positionName"
+      - "status"
+      - "analysisId"
+      - "analyzedAt"
+      - "requiredMet"
+      - "requiredTotal"
+      - "preferredMet"
+      - "preferredPartial"
+      - "preferredTotal"
+      - "updatedAt"
+      x-java-class: "com.nerdnam.matching.application.PostingListQuery$PostingSummary"
+    Count:
+      type: "object"
+      properties:
+        met:
+          type: "integer"
+          format: "int32"
+        partial:
+          type: "integer"
+          format: "int32"
+        total:
+          type: "integer"
+          format: "int32"
+        unmet:
+          type: "integer"
+          format: "int32"
+      required:
+      - "met"
+      - "partial"
+      - "unmet"
+      - "total"
+      x-java-class: "com.nerdnam.matching.domain.FitReport$Count"
+    GapGuide:
+      type: "object"
+      properties:
+        advice:
+          type: "string"
+        avoid:
+          type: "string"
+        citedChunkIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int64"
+        source:
+          type: "string"
+          enum:
+          - "ai"
+          - "fallback"
+      required:
+      - "advice"
+      - "avoid"
+      - "citedChunkIds"
+      - "source"
+      x-java-class: "com.nerdnam.matching.domain.GapGuide"
+    CsrfView:
+      type: "object"
+      properties:
+        headerName:
+          type: "string"
+        token:
+          type: "string"
+      required:
+      - "headerName"
+      - "token"
+      x-java-class: "com.nerdnam.member.api.AuthController$CsrfView"
+    MemberView:
+      type: "object"
+      properties:
+        consentRequired:
+          type: "boolean"
+        displayName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        email:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        id:
+          type: "integer"
+          format: "int64"
+        termsVersion:
+          type: "string"
+      required:
+      - "id"
+      - "displayName"
+      - "email"
+      - "consentRequired"
+      - "termsVersion"
+      x-java-class: "com.nerdnam.member.application.MemberService$MemberView"
+    CareerRequest:
+      type: "object"
+      properties:
+        companyName:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+        duties:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        employmentType:
+          type: "string"
+          enum:
+          - "full_time"
+          - "contract"
+          - "intern"
+          - "freelance"
+        endMonth:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        jobTitle:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+        positionTitle:
+          anyOf:
+          - type: "string"
+            maxLength: 50
+            minLength: 0
+          - type: "null"
+        startMonth:
+          type: "string"
+          example: "2026-10"
+          pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+        teamName:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+        userSkillIds:
+          anyOf:
+          - type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+            uniqueItems: true
+          - type: "null"
+        version:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required:
+      - "companyName"
+      - "employmentType"
+      - "jobTitle"
+      - "startMonth"
+      - "teamName"
+      x-java-class: "com.nerdnam.profile.api.CareerController$CareerRequest"
+    CareerResponse:
+      type: "object"
+      properties:
+        companyName:
+          type: "string"
+        current:
+          type: "boolean"
+        duties:
+          type: "array"
+          items:
+            type: "string"
+        employmentType:
+          type: "string"
+          enum:
+          - "full_time"
+          - "contract"
+          - "intern"
+          - "freelance"
+        endMonth:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        id:
+          type: "integer"
+          format: "int64"
+        jobTitle:
+          type: "string"
+        positionTitle:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        startMonth:
+          type: "string"
+        teamName:
+          type: "string"
+        userSkillIds:
+          type: "array"
+          items:
+            type: "integer"
+            format: "int64"
+          uniqueItems: true
+        version:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "companyName"
+      - "teamName"
+      - "jobTitle"
+      - "positionTitle"
+      - "employmentType"
+      - "startMonth"
+      - "endMonth"
+      - "current"
+      - "duties"
+      - "userSkillIds"
+      - "version"
+      x-java-class: "com.nerdnam.profile.api.CareerController$CareerResponse"
+    AddUserSkillRequest:
+      type: "object"
+      properties:
+        category:
+          anyOf:
+          - type: "string"
+            enum:
+            - "language"
+            - "framework"
+            - "database"
+            - "infra"
+            - "tool"
+          - type: "null"
+        level:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+            maximum: 4
+            minimum: 1
+          - type: "null"
+        name:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "name"
+      x-java-class: "com.nerdnam.profile.api.UserSkillController$AddUserSkillRequest"
+    ChangeLevelRequest:
+      type: "object"
+      properties:
+        level:
+          type: "integer"
+          format: "int32"
+          maximum: 4
+          minimum: 1
+      required:
+      - "level"
+      x-java-class: "com.nerdnam.profile.api.UserSkillController$ChangeLevelRequest"
+    UserSkillResponse:
+      type: "object"
+      properties:
+        category:
+          type: "string"
+          enum:
+          - "language"
+          - "framework"
+          - "database"
+          - "infra"
+          - "tool"
+        id:
+          type: "integer"
+          format: "int64"
+        level:
+          type: "integer"
+          format: "int32"
+        levelName:
+          type: "string"
+        name:
+          type: "string"
+        skillId:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "skillId"
+      - "name"
+      - "category"
+      - "level"
+      - "levelName"
+      x-java-class: "com.nerdnam.profile.api.UserSkillController$UserSkillResponse"
+    UserSkillView:
+      type: "object"
+      properties:
+        category:
+          type: "string"
+          enum:
+          - "language"
+          - "framework"
+          - "database"
+          - "infra"
+          - "tool"
+        id:
+          type: "integer"
+          format: "int64"
+        name:
+          type: "string"
+        proficiency:
+          type: "string"
+          enum:
+          - "learning"
+          - "working"
+          - "proficient"
+          - "expert"
+        skillId:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "skillId"
+      - "name"
+      - "category"
+      - "proficiency"
+      x-java-class: "com.nerdnam.profile.application.UserSkillView"
+    AnswerRequest:
+      type: "object"
+      properties:
+        answer:
+          type: "string"
+          maxLength: 2000
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "answer"
+      x-java-class: "com.nerdnam.project.api.ProjectController$AnswerRequest"
+    DraftRequest:
+      type: "object"
+      properties:
+        affiliation:
+          anyOf:
+          - type: "string"
+            enum:
+            - "career"
+            - "personal"
+            - "team"
+          - type: "null"
+        careerId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        links:
+          anyOf:
+          - type: "array"
+            items:
+              type: "string"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        rawText:
+          anyOf:
+          - type: "string"
+            maxLength: 20000
+            minLength: 0
+          - type: "null"
+        title:
+          anyOf:
+          - type: "string"
+            maxLength: 100
+            minLength: 0
+          - type: "null"
+        userSkillIds:
+          anyOf:
+          - type: "array"
+            items:
+              type: "integer"
+              format: "int64"
+            uniqueItems: true
+          - type: "null"
+        version:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+      required: []
+      x-java-class: "com.nerdnam.project.api.ProjectController$DraftRequest"
+    EpisodeRequest:
+      type: "object"
+      properties:
+        metrics:
+          anyOf:
+          - type: "array"
+            items:
+              $ref: "#/components/schemas/Metric"
+          - type: "null"
+        problem:
+          anyOf:
+          - type: "string"
+            maxLength: 5000
+            minLength: 0
+          - type: "null"
+        result:
+          anyOf:
+          - type: "string"
+            maxLength: 5000
+            minLength: 0
+          - type: "null"
+        role:
+          anyOf:
+          - type: "string"
+            maxLength: 200
+            minLength: 0
+          - type: "null"
+        solution:
+          anyOf:
+          - type: "string"
+            maxLength: 5000
+            minLength: 0
+          - type: "null"
+        title:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "title"
+      x-java-class: "com.nerdnam.project.api.ProjectController$EpisodeRequest"
+    FeedbackRequest:
+      type: "object"
+      properties:
+        feedback:
+          type: "string"
+          maxLength: 2000
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "feedback"
+      x-java-class: "com.nerdnam.project.api.ProjectController$FeedbackRequest"
+    NewSkillRequest:
+      type: "object"
+      properties:
+        category:
+          type: "string"
+          enum:
+          - "language"
+          - "framework"
+          - "database"
+          - "infra"
+          - "tool"
+        name:
+          type: "string"
+          maxLength: 100
+          minLength: 1
+          description: "공백만 입력할 수 없습니다."
+      required:
+      - "category"
+      - "name"
+      x-java-class: "com.nerdnam.project.api.ProjectController$NewSkillRequest"
+    RestoreRequest:
+      type: "object"
+      properties:
+        versionNo:
+          type: "integer"
+          format: "int32"
+          minimum: 1
+      required:
+      - "versionNo"
+      x-java-class: "com.nerdnam.project.api.ProjectController$RestoreRequest"
+    ConfirmedEpisode:
+      type: "object"
+      properties:
+        id:
+          type: "integer"
+          format: "int64"
+        summaryLine:
+          type: "string"
+        title:
+          type: "string"
+      required:
+      - "id"
+      - "title"
+      - "summaryLine"
+      x-java-class: "com.nerdnam.project.application.ProjectLibraryQuery$ConfirmedEpisode"
+    LibraryProject:
+      type: "object"
+      properties:
+        affiliation:
+          type: "string"
+          enum:
+          - "career"
+          - "personal"
+          - "team"
+        careerCompanyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        confirmedEpisodes:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ConfirmedEpisode"
+        id:
+          type: "integer"
+          format: "int64"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        reregistering:
+          type: "boolean"
+        skills:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        status:
+          type: "string"
+          enum:
+          - "draft"
+          - "review"
+          - "confirmed"
+        title:
+          type: "string"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerCompanyName"
+      - "periodStart"
+      - "periodEnd"
+      - "skills"
+      - "confirmedEpisodes"
+      x-java-class: "com.nerdnam.project.application.ProjectLibraryQuery$LibraryProject"
+    Detail:
+      type: "object"
+      properties:
+        affiliation:
+          type: "string"
+          enum:
+          - "career"
+          - "personal"
+          - "team"
+        careerCompanyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        careerId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        generationCount:
+          type: "integer"
+          format: "int32"
+        id:
+          type: "integer"
+          format: "int64"
+        links:
+          type: "array"
+          items:
+            type: "string"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        rawText:
+          type: "string"
+        reregistering:
+          type: "boolean"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        skills:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        splitRound:
+          type: "integer"
+          format: "int32"
+        status:
+          type: "string"
+          enum:
+          - "draft"
+          - "review"
+          - "confirmed"
+        supplements:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SupplementView"
+        title:
+          type: "string"
+        version:
+          type: "integer"
+          format: "int64"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerId"
+      - "careerCompanyName"
+      - "periodStart"
+      - "periodEnd"
+      - "rawText"
+      - "skills"
+      - "links"
+      - "supplements"
+      - "splitRound"
+      - "generationCount"
+      - "version"
+      - "runningJobId"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$Detail"
+    EpisodeView:
+      type: "object"
+      properties:
+        clarifications:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Clarification"
+        currentVersion:
+          type: "integer"
+          format: "int32"
+        displayOrder:
+          type: "integer"
+          format: "int32"
+        id:
+          type: "integer"
+          format: "int64"
+        metrics:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Metric"
+        origin:
+          type: "string"
+          enum:
+          - "ai"
+          - "user"
+        problem:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        result:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        role:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        skills:
+          type: "array"
+          items:
+            type: "string"
+        solution:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        sourceSpans:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SourceSpan"
+        splitRound:
+          type: "integer"
+          format: "int32"
+        status:
+          type: "string"
+          enum:
+          - "review"
+          - "confirmed"
+          - "excluded"
+          - "superseded"
+          - "discarded"
+        title:
+          type: "string"
+        versions:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/VersionView"
+      required:
+      - "id"
+      - "splitRound"
+      - "displayOrder"
+      - "origin"
+      - "status"
+      - "currentVersion"
+      - "title"
+      - "role"
+      - "problem"
+      - "solution"
+      - "result"
+      - "skills"
+      - "metrics"
+      - "sourceSpans"
+      - "clarifications"
+      - "versions"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$EpisodeView"
+    Review:
+      type: "object"
+      properties:
+        affiliation:
+          type: "string"
+          enum:
+          - "career"
+          - "personal"
+          - "team"
+        careerCompanyName:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        episodes:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/EpisodeView"
+        generationCount:
+          type: "integer"
+          format: "int32"
+        id:
+          type: "integer"
+          format: "int64"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        rawText:
+          type: "string"
+        reregistering:
+          type: "boolean"
+        runningJobId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        skills:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SkillRef"
+        sourceText:
+          type: "string"
+        splitRound:
+          type: "integer"
+          format: "int32"
+        status:
+          type: "string"
+          enum:
+          - "draft"
+          - "review"
+          - "confirmed"
+        supplements:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SupplementView"
+        title:
+          type: "string"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerCompanyName"
+      - "periodStart"
+      - "periodEnd"
+      - "rawText"
+      - "sourceText"
+      - "supplements"
+      - "skills"
+      - "splitRound"
+      - "generationCount"
+      - "episodes"
+      - "runningJobId"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$Review"
+    SkillRef:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        userSkillId:
+          type: "integer"
+          format: "int64"
+      required:
+      - "userSkillId"
+      - "name"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$SkillRef"
+    Summary:
+      type: "object"
+      properties:
+        affiliation:
+          type: "string"
+          enum:
+          - "career"
+          - "personal"
+          - "team"
+        careerId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        confirmedEpisodeCount:
+          type: "integer"
+          format: "int32"
+        id:
+          type: "integer"
+          format: "int64"
+        lastConfirmedAt:
+          anyOf:
+          - type: "string"
+            format: "date-time"
+          - type: "null"
+        periodEnd:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        periodStart:
+          anyOf:
+          - type: "string"
+            example: "2026-10"
+            pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          - type: "null"
+        reregistering:
+          type: "boolean"
+        status:
+          type: "string"
+          enum:
+          - "draft"
+          - "review"
+          - "confirmed"
+        title:
+          type: "string"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+      required:
+      - "id"
+      - "title"
+      - "status"
+      - "reregistering"
+      - "affiliation"
+      - "careerId"
+      - "periodStart"
+      - "periodEnd"
+      - "confirmedEpisodeCount"
+      - "lastConfirmedAt"
+      - "updatedAt"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$Summary"
+    SupplementView:
+      type: "object"
+      properties:
+        answer:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        episodeId:
+          anyOf:
+          - type: "integer"
+            format: "int64"
+          - type: "null"
+        id:
+          type: "integer"
+          format: "int64"
+        question:
+          type: "string"
+      required:
+      - "id"
+      - "episodeId"
+      - "question"
+      - "answer"
+      - "createdAt"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$SupplementView"
+    VersionView:
+      type: "object"
+      properties:
+        changeType:
+          type: "string"
+          enum:
+          - "ai_split"
+          - "ai_revision"
+          - "user_edit"
+          - "user_created"
+          - "restored"
+        clarifications:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Clarification"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        feedback:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        metrics:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/Metric"
+        problem:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        restoredFrom:
+          anyOf:
+          - type: "integer"
+            format: "int32"
+          - type: "null"
+        result:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        role:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        skills:
+          type: "array"
+          items:
+            type: "string"
+        solution:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        sourceSpans:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SourceSpan"
+        title:
+          type: "string"
+        versionNo:
+          type: "integer"
+          format: "int32"
+      required:
+      - "versionNo"
+      - "changeType"
+      - "restoredFrom"
+      - "feedback"
+      - "createdAt"
+      - "title"
+      - "role"
+      - "problem"
+      - "solution"
+      - "result"
+      - "skills"
+      - "metrics"
+      - "sourceSpans"
+      - "clarifications"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$VersionView"
+    Clarification:
+      type: "object"
+      properties:
+        example:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        field:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        key:
+          type: "string"
+        question:
+          type: "string"
+      required:
+      - "key"
+      - "field"
+      - "question"
+      - "example"
+      x-java-class: "com.nerdnam.project.domain.Clarification"
+    Metric:
+      type: "object"
+      properties:
+        after:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        before:
+          anyOf:
+          - type: "string"
+          - type: "null"
+        name:
+          type: "string"
+        source:
+          anyOf:
+          - type: "string"
+          - type: "null"
+      required:
+      - "name"
+      - "before"
+      - "after"
+      - "source"
+      x-java-class: "com.nerdnam.project.domain.Metric"
+    SourceSpan:
+      type: "object"
+      properties:
+        end:
+          type: "integer"
+          format: "int32"
+        start:
+          type: "integer"
+          format: "int32"
+      required:
+      - "start"
+      - "end"
+      x-java-class: "com.nerdnam.project.domain.SourceSpan"
+    SkillResponse:
+      type: "object"
+      properties:
+        category:
+          type: "string"
+          enum:
+          - "language"
+          - "framework"
+          - "database"
+          - "infra"
+          - "tool"
+        id:
+          type: "integer"
+          format: "int64"
+        name:
+          type: "string"
+      required:
+      - "id"
+      - "name"
+      - "category"
+      x-java-class: "com.nerdnam.skill.api.SkillController$SkillResponse"
   examples:
     com.nerdnam.aijob.application.AiJobView:
       summary: "형식 확인용 예시"
@@ -4726,10 +4447,9 @@ components:
         postingId: 1
         tabs:
         - generationNo: 1
-          path: "motive"
           runningJobId: null
           status: "generating"
-          tab: "motivation"
+          tab: "motive"
     com.nerdnam.feedback.application.RatingService.RatingView:
       summary: "형식 확인용 예시"
       value:
@@ -4784,10 +4504,9 @@ components:
         feedback: null
         generationNo: 1
         id: 1
-        path: "motive"
         runningJobId: null
         status: "generating"
-        tab: "motivation"
+        tab: "motive"
     com.nerdnam.guide.api.WritingGuideController.GenerateRequest:
       summary: "형식 확인용 예시"
       value:

@@ -5,6 +5,7 @@ import com.nerdnam.profile.domain.EmploymentType;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 경력 조회 결과. 트랜잭션 안에서 엔티티를 이 값으로 바꿔 돌려준다
@@ -15,7 +16,7 @@ public record CareerView(
         String companyName,
         String teamName,
         String jobTitle,
-        String positionTitle,
+        @Nullable String positionTitle,
         EmploymentType employmentType,
         YearMonth startMonth,
         YearMonth endMonth,

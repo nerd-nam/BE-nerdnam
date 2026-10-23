@@ -98,7 +98,11 @@ class WritingGuideApiTest extends ApiTestSupport {
         getJson(member, "/api/job-postings/{id}/guides", posting)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tabs", hasSize(5)))
-                .andExpect(jsonPath("$.tabs[0].path").value("motive"))
+                // 요청 경로와 응답이 같은 이름이다. 같은 값을 주던 path 는 뺐다 (SPEC PR #47 FE 요청)
+                .andExpect(jsonPath("$.tabs[0].tab").value("motive"))
+                .andExpect(jsonPath("$.tabs[0].path").doesNotExist())
+                .andExpect(jsonPath("$.tabs[1].tab").value("intro"))
+                .andExpect(jsonPath("$.tabs[3].tab").value("career"))
                 .andExpect(jsonPath("$.tabs[0].status").doesNotExist());
         getJson(member, "/api/job-postings/{id}/guides/motive", posting).andExpect(status().isNotFound());
 
@@ -110,6 +114,8 @@ class WritingGuideApiTest extends ApiTestSupport {
 
         getJson(member, "/api/job-postings/{id}/guides/motive", posting)
                 .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.tab").value("motive"))
+                .andExpect(jsonPath("$.path").doesNotExist())
                 .andExpect(jsonPath("$.generationNo").value(1))
                 .andExpect(jsonPath("$.content.core_message").value("OO페이 백엔드 개발자에 맞춘 핵심 메시지"))
                 .andExpect(jsonPath("$.citations", not(empty())))

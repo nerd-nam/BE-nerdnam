@@ -19,6 +19,7 @@ import com.nerdnam.project.application.ProjectEvidenceQuery.Reference;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,8 +61,8 @@ public class FitReportQuery {
     }
 
     /** 분석 하나의 요약 (목록용). 내용은 리포트 조회로 받는다 */
-    public record AnalysisSummary(Long analysisId, AnalysisStatus status, String failureCode, Instant requestedAt,
-                                  Instant completedAt) {
+    public record AnalysisSummary(Long analysisId, AnalysisStatus status, @Nullable String failureCode,
+                                  Instant requestedAt, @Nullable Instant completedAt) {
     }
 
     public FitReportView get(Long memberId, Long analysisId) {

@@ -9,6 +9,7 @@ import com.nerdnam.project.domain.ProjectRepository;
 import com.nerdnam.project.domain.ProjectStatus;
 import java.time.YearMonth;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +40,9 @@ public class ProjectLibraryQuery {
     }
 
     public record LibraryProject(Long id, String title, ProjectStatus status, boolean reregistering,
-                                 Affiliation affiliation, String careerCompanyName, YearMonth periodStart,
-                                 YearMonth periodEnd, List<SkillRef> skills, List<ConfirmedEpisode> confirmedEpisodes) {
+                                 Affiliation affiliation, @Nullable String careerCompanyName,
+                                 @Nullable YearMonth periodStart, @Nullable YearMonth periodEnd,
+                                 List<SkillRef> skills, List<ConfirmedEpisode> confirmedEpisodes) {
     }
 
     public List<LibraryProject> list(Long memberId) {

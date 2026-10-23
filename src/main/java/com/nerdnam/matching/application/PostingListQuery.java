@@ -2,6 +2,7 @@ package com.nerdnam.matching.application;
 
 import java.time.Instant;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +20,11 @@ public class PostingListQuery {
     }
 
     /** @param status DRAFT(작성 중) / IN_PROGRESS / COMPLETED / FAILED. 충족 수는 분석 완료일 때만 */
-    public record PostingSummary(Long id, String companyName, String positionName, String status, Long analysisId,
-                                 Instant analyzedAt, Integer requiredMet, Integer requiredTotal, Integer preferredMet,
-                                 Integer preferredPartial, Integer preferredTotal, Instant updatedAt) {
+    public record PostingSummary(Long id, String companyName, String positionName, String status,
+                                 @Nullable Long analysisId, @Nullable Instant analyzedAt,
+                                 @Nullable Integer requiredMet, @Nullable Integer requiredTotal,
+                                 @Nullable Integer preferredMet, @Nullable Integer preferredPartial,
+                                 @Nullable Integer preferredTotal, Instant updatedAt) {
     }
 
     public List<PostingSummary> list(Long memberId) {

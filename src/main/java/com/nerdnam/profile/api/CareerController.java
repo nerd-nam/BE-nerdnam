@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Size;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -83,10 +84,10 @@ public class CareerController {
             String companyName,
             String teamName,
             String jobTitle,
-            String positionTitle,
+            @Nullable String positionTitle,
             EmploymentType employmentType,
             String startMonth,
-            String endMonth,
+            @Nullable String endMonth,
             boolean current,
             List<String> duties,
             Set<Long> userSkillIds,

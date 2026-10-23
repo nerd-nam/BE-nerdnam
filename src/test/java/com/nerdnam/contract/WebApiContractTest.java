@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.nerdnam.common.auth.CurrentMemberId;
+import com.nerdnam.guide.domain.GuideTab;
 import com.nerdnam.support.ApiTestSupport;
 import io.swagger.v3.oas.models.media.StringSchema;
 import java.nio.file.Files;
@@ -90,7 +91,7 @@ class WebApiContractTest extends ApiTestSupport {
     void 계약_enum은_실제_응답_매퍼의_값과_같다() throws Exception {
         JsonNode contract = YAML.readTree(Files.readString(COPY));
         contract.path("components").path("schemas").properties().forEach(entry -> {
-            Class<?> type = WebApiContractDocument.recordType(entry.getKey());
+            Class<?> type = javaType(entry.getValue());
             if (type == null || !type.isRecord()) {
                 return;
             }
@@ -105,6 +106,80 @@ class WebApiContractTest extends ApiTestSupport {
                 }
             }
         });
+    }
+
+    /**
+     * 스키마 이름은 짧고(FE 가 이 이름으로 타입을 만든다), 어느 Java 타입인지는 {@code x-java-class} 로 남긴다.
+     * C-03 검토에서 FE 가 요청한 것 (SPEC PR #47 의견 3).
+     */
+    @Test
+    void 스키마_이름은_짧고_자바_타입을_확장으로_남긴다() throws Exception {
+        JsonNode schemas = YAML.readTree(Files.readString(COPY)).path("components").path("schemas");
+        Set<String> withoutJavaType = new HashSet<>();
+        schemas.properties().forEach(entry -> {
+            assertThat(entry.getKey()).as("스키마 이름에 패키지가 남았어요").doesNotContain(".");
+            if (entry.getValue().path("x-java-class").isMissingNode()) {
+                withoutJavaType.add(entry.getKey());
+            } else {
+                assertThat(javaType(entry.getValue())).as("x-java-class %s", entry.getKey()).isNotNull();
+            }
+        });
+        assertThat(withoutJavaType).as("직접 만든 스키마만 Java 타입이 없다").containsExactly("ProblemDetail");
+    }
+
+    /**
+     * 응답은 키가 항상 있지만(required), <b>값이 null일 수 있는 것은 {@code @Nullable} 로 표시한 것만</b>이다.
+     * 전부 null 가능이면 웹의 타입이 모두 "없을 수도 있음"이 된다 (SPEC PR #47 의견 2).
+     */
+    @Test
+    void 응답의_필수_필드는_표시한_것만_null이_된다() throws Exception {
+        JsonNode schemas = YAML.readTree(Files.readString(COPY)).path("components").path("schemas");
+        List<String> wrong = new java.util.ArrayList<>();
+        schemas.properties().forEach(entry -> {
+            Class<?> type = javaType(entry.getValue());
+            if (type == null || !type.isRecord() || type.getSimpleName().endsWith("Request")) {
+                return;
+            }
+            for (var field : type.getRecordComponents()) {
+                JsonNode property = entry.getValue().path("properties").path(field.getName());
+                if (property.isMissingNode()) {
+                    continue;
+                }
+                boolean nullable = property.path("anyOf").toString().contains("\"null\"");
+                boolean marked = java.util.Arrays.stream(field.getAnnotatedType().getAnnotations())
+                        .anyMatch(a -> a.annotationType().getSimpleName().equals("Nullable"));
+                if (nullable != marked) {
+                    wrong.add("%s.%s (계약 null 가능=%s, @Nullable=%s)"
+                            .formatted(entry.getKey(), field.getName(), nullable, marked));
+                }
+            }
+        });
+        assertThat(wrong).as("계약의 null 허용과 @Nullable 표시가 어긋났어요").isEmpty();
+    }
+
+    /**
+     * 작성 방향 탭은 요청 경로와 응답이 같은 이름을 쓴다 — {@code motive·intro·portfolio·career·image}.
+     * 전에는 응답이 enum 이름(motivation 등)이라 웹이 같은 탭을 두 이름으로 다뤘다 (SPEC PR #47 의견 1).
+     */
+    @Test
+    void 작성_방향_탭은_요청_경로와_응답이_같은_이름이다() throws Exception {
+        JsonNode schemas = YAML.readTree(Files.readString(COPY)).path("components").path("schemas");
+        JsonNode expected = appJson.valueToTree(java.util.Arrays.stream(GuideTab.values()).map(GuideTab::path).toList());
+        for (String schema : List.of("Guide", "TabStatus")) {
+            assertThat(schemas.path(schema).path("properties").path("tab").path("enum"))
+                    .as("%s.tab", schema).isEqualTo(expected);
+            assertThat(schemas.path(schema).path("properties").path("path").isMissingNode())
+                    .as("%s.path 는 tab 과 같은 값이라 뺐다 (SPEC PR #47)", schema).isTrue();
+        }
+        JsonNode parameter = YAML.readTree(Files.readString(COPY)).path("paths")
+                .path("/api/job-postings/{postingId}/guides/{tab}").path("get").path("parameters");
+        assertThat(parameter.toString()).as("경로의 tab 설명").contains("motive");
+    }
+
+    /** 짧은 스키마 이름에서 Java 타입을 찾는다 (계약에 적어 둔 x-java-class) */
+    private static Class<?> javaType(JsonNode schema) {
+        JsonNode name = schema.path("x-java-class");
+        return name.isString() ? WebApiContractDocument.recordType(name.asString()) : null;
     }
 
     private static void checkReferences(JsonNode root, JsonNode value) {

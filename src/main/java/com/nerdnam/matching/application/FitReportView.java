@@ -7,17 +7,20 @@ import com.nerdnam.matching.domain.GapGuide;
 import com.nerdnam.matching.domain.Verdict;
 import java.time.Instant;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** 적합도 리포트 (S08). 분석 중·실패면 counts·diagnosis·matches 가 비어 있다 */
 public record FitReportView(Long analysisId, Long postingId, String companyName, String positionName,
-                            AnalysisStatus status, String failureCode, Instant requestedAt, Instant completedAt,
-                            FitReport.Count required, FitReport.Count preferred, String diagnosis,
-                            List<MatchView> matches, Long runningJobId) {
+                            AnalysisStatus status, @Nullable String failureCode, Instant requestedAt,
+                            @Nullable Instant completedAt, FitReport.@Nullable Count required,
+                            FitReport.@Nullable Count preferred, @Nullable String diagnosis,
+                            List<MatchView> matches, @Nullable Long runningJobId) {
 
     /** @param verdict 최종 판정 (규칙·LLM 중 낮은 쪽) */
     public record MatchView(Long id, Long requirementId, String type, String text, List<String> skills,
-                            Integer minYears, Verdict ruleVerdict, Verdict llmVerdict, Verdict verdict, String reason,
-                            List<EvidenceView> evidences, GapGuide gapGuide) {
+                            @Nullable Integer minYears, @Nullable Verdict ruleVerdict, @Nullable Verdict llmVerdict,
+                            Verdict verdict, @Nullable String reason, List<EvidenceView> evidences,
+                            @Nullable GapGuide gapGuide) {
     }
 
     /**
@@ -27,6 +30,7 @@ public record FitReportView(Long analysisId, Long postingId, String companyName,
      * CAREER·SKILL → S06 내 경험. 프로젝트가 아닌 근거의 reregistering 은 false다.
      */
     public record EvidenceView(int rank, long chunkId, EvidenceSourceType sourceType, long sourceId, int sourceVersion,
-                               Long projectId, boolean reregistering, boolean deleted, String label, String snippet) {
+                               @Nullable Long projectId, boolean reregistering, boolean deleted, String label,
+                               @Nullable String snippet) {
     }
 }

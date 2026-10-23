@@ -7,6 +7,7 @@ import com.nerdnam.matching.application.FitReportQuery;
 import com.nerdnam.project.application.ProjectDraftService;
 import java.time.Instant;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +26,8 @@ public class RatingService {
         this.reports = reports;
     }
 
-    public record RatingView(RatingTarget targetType, Long targetId, int score, String comment, Instant updatedAt) {
+    public record RatingView(RatingTarget targetType, Long targetId, int score, @Nullable String comment,
+                             Instant updatedAt) {
 
         static RatingView from(SatisfactionRating r) {
             return new RatingView(r.getTargetType(), r.getTargetId(), r.getScore(), r.getComment(), r.getUpdatedAt());
