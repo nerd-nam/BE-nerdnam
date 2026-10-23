@@ -28,6 +28,6 @@ public final class GuideViews {
 
     /** @param requirementCount 이 근거가 뒷받침한 요건 수 */
     public record Citation(long chunkId, EvidenceSourceType sourceType, Long sourceId, Long projectId, String label,
-                           int requirementCount) {
+                           int requirementCount, boolean deleted, boolean reregistering) {
     }
 }

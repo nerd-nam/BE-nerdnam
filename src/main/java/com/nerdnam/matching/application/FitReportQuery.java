@@ -54,7 +54,7 @@ public class FitReportQuery {
     public List<AnalysisSummary> history(Long memberId, Long postingId) {
         postings.get(memberId, postingId);   // 소유권 확인
         return analyses.findAllByJobPostingIdAndMemberIdOrderByRequestedAtDescIdDesc(postingId, memberId).stream()
-                .map(a -> new AnalysisSummary(a.getId(), a.getStatus(), a.getFailureCode(), a.getRequestedAt(),
+                .map(a -> new AnalysisSummary(a.getId(), a.getStatus(), lower(a.getFailureCode()), a.getRequestedAt(),
                         a.getCompletedAt()))
                 .toList();
     }
@@ -74,7 +74,7 @@ public class FitReportQuery {
         Long running = aiJobs.runningJobId(TargetType.JOB_POSTING, posting.id(), "").orElse(null);
         if (a.getStatus() != AnalysisStatus.COMPLETED) {
             return new FitReportView(a.getId(), posting.id(), posting.companyName(), posting.positionName(), a.getStatus(),
-                    a.getFailureCode(), a.getRequestedAt(), a.getCompletedAt(), null, null, null, List.of(), running);
+                    lower(a.getFailureCode()), a.getRequestedAt(), a.getCompletedAt(), null, null, null, List.of(), running);
         }
         FitReport report = a.report();
         Map<Long, Reference> episodes = projects.episodes(a.getMemberId(), sourceIds(a, EvidenceSourceType.EPISODE));
@@ -86,7 +86,7 @@ public class FitReportQuery {
                         m.gapGuide()))
                 .toList();
         return new FitReportView(a.getId(), posting.id(), posting.companyName(), posting.positionName(), a.getStatus(),
-                a.getFailureCode(), a.getRequestedAt(), a.getCompletedAt(), report.required(), report.preferred(),
+                lower(a.getFailureCode()), a.getRequestedAt(), a.getCompletedAt(), report.required(), report.preferred(),
                 report.diagnosis(), matches, running);
     }
 
@@ -101,8 +101,10 @@ public class FitReportQuery {
             case PROJECT_SUMMARY -> summaries.get(e.getSourceId());
             default -> null;
         };
+        boolean deleted = e.isSourceDeleted() || (project == null
+                && (e.getSourceType() == EvidenceSourceType.EPISODE || e.getSourceType() == EvidenceSourceType.PROJECT_SUMMARY));
         return new EvidenceView(e.getRankNo(), e.getChunkId(), e.getSourceType(), e.getSourceId(), e.getSourceVersion(),
-                project == null ? null : project.projectId(), project != null && project.reregistering(), e.label(), e.getSnippet());
+                project == null ? null : project.projectId(), project != null && project.reregistering(), deleted, e.label(), deleted ? null : e.getSnippet());
     }
 
     private static List<Long> sourceIds(FitAnalysis a, EvidenceSourceType type) {

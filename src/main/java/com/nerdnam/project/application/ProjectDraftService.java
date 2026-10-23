@@ -22,11 +22,14 @@ public class ProjectDraftService {
     private final ProjectRepository projects;
     private final ProjectLookup lookup;
     private final UserSkillService userSkills;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
-    public ProjectDraftService(ProjectRepository projects, ProjectLookup lookup, UserSkillService userSkills) {
+    public ProjectDraftService(ProjectRepository projects, ProjectLookup lookup, UserSkillService userSkills,
+                               org.springframework.context.ApplicationEventPublisher events) {
         this.projects = projects;
         this.lookup = lookup;
         this.userSkills = userSkills;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +82,21 @@ public class ProjectDraftService {
         project.discardReview();
         projects.flush();
         return lookup.detail(project);
+    }
+
+    /** 모든 상태에서 삭제할 수 있다. 진행 중인 재구성이 있으면 끝난 뒤 다시 요청한다. */
+    public void delete(Long memberId, Long projectId) {
+        Project project = lookup.get(memberId, projectId);
+        Long running = lookup.runningJobId(project);
+        if (running != null) {
+            throw new BusinessException(ErrorCode.AI_JOB_RUNNING, ErrorCode.AI_JOB_RUNNING.defaultMessage(),
+                    java.util.Map.of("runningJobId", running));
+        }
+        List<Long> episodes = project.getEpisodes().stream().map(e -> e.getId()).toList();
+        events.publishEvent(new com.nerdnam.project.domain.ProjectDeleting(memberId, projectId, episodes));
+        projects.delete(project);
+        projects.flush();
+        events.publishEvent(new com.nerdnam.project.domain.ProjectDeleted(memberId, projectId, episodes));
     }
 
     /** 재등록 시작 (S06 "수정") — 프로젝트가 초안으로 돌아가고 입력 화면부터 다시 */

@@ -27,6 +27,6 @@ public record FitReportView(Long analysisId, Long postingId, String companyName,
      * CAREER·SKILL → S06 내 경험. 프로젝트가 아닌 근거의 reregistering 은 false다.
      */
     public record EvidenceView(int rank, long chunkId, EvidenceSourceType sourceType, long sourceId, int sourceVersion,
-                               Long projectId, boolean reregistering, String label, String snippet) {
+                               Long projectId, boolean reregistering, boolean deleted, String label, String snippet) {
     }
 }

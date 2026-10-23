@@ -52,6 +52,9 @@ public class MatchEvidence {
     @Column(name = "snippet", nullable = false)
     private String snippet;
 
+    @Column(name = "source_deleted", nullable = false)
+    private boolean sourceDeleted;
+
     static MatchEvidence of(RequirementMatch match, int rankNo, Candidate c) {
         MatchEvidence e = new MatchEvidence();
         e.match = match;
@@ -66,6 +69,6 @@ public class MatchEvidence {
 
     /** 화면에 보여줄 이름 (근거 카드 제목). 청크 텍스트의 첫 줄들에서 꺼낸다 (rag 의 ChunkTextBuilder 모양) */
     public String label() {
-        return EvidenceLabel.of(sourceType, snippet);
+        return sourceDeleted ? snippet : EvidenceLabel.of(sourceType, snippet);
     }
 }
