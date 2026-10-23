@@ -44,7 +44,8 @@ cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 �
   - D-1 포트폴리오 시각자료는 안내만 (BE 는 `visual` 을 만들지 않음)
 - 세션은 Redis 저장(키 `nerdnam:session:sessions:{id}`, 7일). `docker compose up -d` 에 Redis 포함, 꺼져 있으면 세션 쓰는 요청이 500(헤더 인증은 영향 없음).
 - 담당 레포 이슈 12건 중 **9건 닫힘.** 남은 것은 FE #6(다시 만들기 피드백 — BE 는 이미 제안대로 구현) 뿐입니다. 목록은 `docs/04` 4-1.
-- PR 이 쌓여 있습니다: **#1** `chore/project-setup` → main, **#2** `feat/profile-skill-catalog` → #1, **#3** `feat/project-restructure-rag` → #2. 이 순서로 머지. 머지 후 GitHub 기본 브랜치를 `main`으로 바꿔야 함(지금 `chore/project-setup`).
+- **PR 정리 끝 (2026-10-23).** 쌓여 있던 스택 PR #1~#3 은 아래에서부터 머지됐는데 **main 에는 #1 만 들어가고 #2·#3 구현은 중간 브랜치에 남아 있었습니다.** PR #10 으로 전체를 main 에 모으고, 기본 브랜치를 `main` 으로 바꾸고, 머지된 브랜치 3개를 지웠습니다. 지금 원격 브랜치는 `main` 하나뿐입니다.
+- 작업은 `main` 에서 브랜치를 따서 합니다 (스택 PR 은 다시 만들지 않습니다 — 아래에서 머지하면 위 PR 이 main 에 반영되지 않습니다).
 
 ## 다음 할 일 (우선순위 순)
 
