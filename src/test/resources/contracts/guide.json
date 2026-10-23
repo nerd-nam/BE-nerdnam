@@ -1,0 +1,325 @@
+{
+  "_source": "design/assets/js/guide-data.js (S09 예시)를 api-ai 계약 v0.2 /guide 응답 모양으로 옮김",
+  "jd_id": 1,
+  "guides": {
+    "motive": {
+      "model": "Qwen/Qwen3.5-4B",
+      "prompt_version": "p4_v1",
+      "content": {
+        "tab": "motive",
+        "message": "결제 성능 문제를 풀어 본 경험을, 더 큰 결제 트래픽에서 이어 가고 싶다.",
+        "outline": [
+          {
+            "title": "회사가 지금 풀고 있는 문제",
+            "detail": "공고의 주요 업무 “대용량 트래픽 대응을 위한 아키텍처 개선”에서 출발하세요. 회사 서비스와 최근 소식은 직접 확인해 채우세요: [회사 관련 사실]",
+            "sources": []
+          },
+          {
+            "title": "내가 겪은 비슷한 문제",
+            "detail": "프로모션 피크에 결제 승인 응답이 1.2초까지 늘었던 상황",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "title": "합류하면 기여할 지점",
+            "detail": "캐시와 비동기 분리로 병목을 줄인 방식을 결제 승인·정산 시스템 개선에 잇기",
+            "sources": [
+              531
+            ]
+          }
+        ],
+        "keywords": [
+          "결제 승인",
+          "대용량 트래픽",
+          "아키텍처 개선"
+        ],
+        "avoid": [
+          "회사 칭찬만 나열하기",
+          "확인하지 않은 회사 정보 쓰기"
+        ]
+      },
+      "cited_chunk_ids": [
+        531
+      ]
+    },
+    "intro": {
+      "model": "Qwen/Qwen3.5-4B",
+      "prompt_version": "p4_v1",
+      "content": {
+        "tab": "intro",
+        "message": "병목을 수치로 찾고, 구조로 해결하는 백엔드 개발자",
+        "outline": [
+          {
+            "title": "한 문장 소개",
+            "detail": "핵심 메시지를 첫 문장으로 쓰고, Spring 기반으로 3년 넘게 일했다는 점을 함께 밝히세요.",
+            "sources": [
+              511
+            ]
+          },
+          {
+            "title": "대표 근거 1 · 필수 “대용량 트래픽” 대응",
+            "detail": "평균 응답 1.2초 → 0.3초, 피크 처리량 약 2배를 장애 없이 처리",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "title": "대표 근거 2 · 필수 “RDBMS·쿼리 튜닝” 대응",
+            "detail": "정산 배치의 실행 계획 분석과 인덱스 재설계",
+            "sources": [
+              532
+            ]
+          },
+          {
+            "title": "일하는 방식",
+            "detail": "팀 4명 중 백엔드 리드로 설계부터 구현까지 맡은 경험",
+            "sources": [
+              531
+            ]
+          }
+        ],
+        "keywords": [
+          "응답시간 75% 단축",
+          "비동기 처리",
+          "쿼리 튜닝"
+        ],
+        "avoid": [
+          "기술 이름만 나열하기",
+          "원문에 없는 수치 덧붙이기"
+        ],
+        "coverage": [
+          {
+            "requirement_id": 11,
+            "covered": true,
+            "where": "문단 1 · 한 문장 소개"
+          },
+          {
+            "requirement_id": 13,
+            "covered": true,
+            "where": "문단 2 · 결제 승인 API"
+          },
+          {
+            "requirement_id": 12,
+            "covered": true,
+            "where": "문단 3 · 정산 배치"
+          },
+          {
+            "requirement_id": 14,
+            "covered": true,
+            "where": "문단 2 · 비동기 분리"
+          },
+          {
+            "requirement_id": 15,
+            "covered": false,
+            "where": "경력기술서에서 범위를 밝혀 다루기"
+          },
+          {
+            "requirement_id": 16,
+            "covered": false,
+            "where": "다루지 않음 · 근거 없음"
+          }
+        ]
+      },
+      "cited_chunk_ids": [
+        511,
+        531,
+        532
+      ]
+    },
+    "portfolio": {
+      "model": "Qwen/Qwen3.5-4B",
+      "prompt_version": "p4_v1",
+      "content": {
+        "tab": "portfolio",
+        "message": "문제 → 설계 선택의 이유 → Before/After 수치 순서로 보여 주기",
+        "outline": [
+          {
+            "title": "대표 프로젝트 1 · 결제 승인 API 성능 개선",
+            "detail": "필수 “대용량 트래픽”과 우대 “메시지 큐”를 함께 증명해요. 아래 6쪽 흐름으로 구성하세요.",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "title": "대표 프로젝트 2 · 정산 배치 쿼리 개선",
+            "detail": "필수 “RDBMS·쿼리 튜닝” 대응. 실행 계획 전후 비교를 표로 정리하세요.",
+            "sources": [
+              532
+            ]
+          },
+          {
+            "title": "학습 중 · Kubernetes",
+            "detail": "개인 학습이 있다면 맨 끝에 “학습 중”으로 따로 표기하세요.",
+            "sources": []
+          }
+        ],
+        "keywords": [
+          "설계 선택의 이유",
+          "Before/After"
+        ],
+        "avoid": [
+          "모든 프로젝트를 시간순으로 나열하기",
+          "생성 이미지에 수치 넣기"
+        ],
+        "pages": [
+          {
+            "order": 1,
+            "title": "커버",
+            "hint": "프로젝트명 · 역할 · 기간",
+            "kind": "cover",
+            "sources": []
+          },
+          {
+            "order": 2,
+            "title": "문제",
+            "hint": "평균 응답 1.2초, 결제 이탈 발생",
+            "kind": "text",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "order": 3,
+            "title": "원인",
+            "hint": "승인마다 DB 조회 + 동기 후처리 구조",
+            "kind": "diagram",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "order": 4,
+            "title": "해결 설계",
+            "hint": "Redis 캐시 · Kafka 비동기 분리, 선택 이유",
+            "kind": "diagram",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "order": 5,
+            "title": "결과",
+            "hint": "평균 응답 1.2초 → 0.3초 · 피크 처리량 약 2배",
+            "kind": "chart",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "order": 6,
+            "title": "배운 점",
+            "hint": "다음에 다르게 할 것 · [직접 작성]",
+            "kind": "text",
+            "sources": []
+          }
+        ]
+      },
+      "cited_chunk_ids": [
+        531,
+        532
+      ]
+    },
+    "career": {
+      "model": "Qwen/Qwen3.5-4B",
+      "prompt_version": "p4_v1",
+      "content": {
+        "tab": "career",
+        "message": "OO커머스 업무를 공고 용어로 다시 쓰고, 업무마다 성과를 한 줄씩",
+        "outline": [
+          {
+            "title": "OO커머스 · 결제플랫폼팀 (2023.03 – 현재)",
+            "detail": "최근 경력을 맨 위에. 업무 문장은 아래 “공고 용어로 바꿔 쓰기”를 참고하세요.",
+            "sources": [
+              511
+            ]
+          },
+          {
+            "title": "업무별 성과 한 줄",
+            "detail": "평균 응답 1.2초 → 0.3초 · 승인 후처리 Kafka 비동기 분리",
+            "sources": [
+              531
+            ]
+          },
+          {
+            "title": "도메인 범위 밝히기",
+            "detail": "“커머스 결제”로 정확히 쓰고, 금융권 경험으로 넓히지 않기",
+            "sources": []
+          }
+        ],
+        "keywords": [
+          "대용량 트래픽",
+          "메시지 큐",
+          "결제 승인·정산"
+        ],
+        "avoid": [
+          "담당 업무만 쓰고 성과 빼기"
+        ],
+        "rewrites": [
+          {
+            "before": "결제 승인·취소 API 설계와 운영",
+            "after": "대용량 결제 트래픽을 처리하는 승인·취소 API 설계·운영",
+            "requirement_id": 13
+          },
+          {
+            "before": "정산 배치 개발과 쿼리 성능 개선",
+            "after": "정산 배치 개발, 실행 계획 분석과 인덱스 재설계로 쿼리 튜닝",
+            "requirement_id": 12
+          },
+          {
+            "before": "(프로젝트) 후처리를 Kafka로 비동기 분리",
+            "after": "Kafka 기반 메시지 큐로 결제 승인 후처리 비동기화",
+            "requirement_id": 14
+          }
+        ]
+      },
+      "cited_chunk_ids": [
+        511,
+        531
+      ]
+    },
+    "image": {
+      "model": "Qwen/Qwen3.5-4B",
+      "prompt_version": "p4_v1",
+      "content": {
+        "tab": "image",
+        "prompts": [
+          {
+            "title": "커버 이미지 · 결제 승인 API 성능 개선",
+            "purpose": "포트폴리오 커버",
+            "page": 1,
+            "ratio": "16:9",
+            "prompt": "Clean isometric illustration of a payment request flowing through a fast server pipeline, a glowing cache layer and an asynchronous message queue branching off, minimal flat tech style, navy and teal palette, soft lighting, white background, 16:9, no text, no logos",
+            "negative": "text, letters, numbers, brand logos, cluttered background, photorealistic people"
+          },
+          {
+            "title": "개념 이미지 · 동기 처리 vs 비동기 처리",
+            "purpose": "포트폴리오 보조 이미지",
+            "page": 4,
+            "ratio": "4:3",
+            "prompt": "Two side-by-side minimal abstract compositions: on the left a single long chain of blocks waiting in a queue, on the right a short chain with branches flowing in parallel, flat vector style, navy, teal and light gray, white background, 4:3, no text",
+            "negative": "text, labels, numbers, logos, 3D clutter"
+          }
+        ],
+        "tool_visuals": [
+          {
+            "name": "원인 구조 도식",
+            "page": 3,
+            "kind": "diagram"
+          },
+          {
+            "name": "해결 설계 Before/After 도식",
+            "page": 4,
+            "kind": "diagram"
+          },
+          {
+            "name": "응답시간 비교 차트",
+            "page": 5,
+            "kind": "chart"
+          }
+        ]
+      },
+      "cited_chunk_ids": []
+    }
+  }
+}

@@ -1,0 +1,1243 @@
+# SPEC-nerdnam/contracts/api-ai.openapi.yaml 에서 복사 (C-04 v0.2.0, 2026-10-23, SPEC PR #39)
+# 계약이 바뀌면 다시 복사한다. 대조는 ApiAiContractTest 가 한다.
+openapi: 3.1.0
+info:
+  title: nerdnam-ai
+  description: 'API ↔ AI 계약 (C-04). 출처는 AI 레포 `app/schemas.py`, 규칙은 SPEC 기획서 5.5 "AI 서버 공통 규칙".
+
+
+    - 모든 생성 응답에 `model`·`prompt_version`. `prompt_version`이 `"stub"`이면 가짜 응답(저장 안 함), `/embed`는 `embedding_model`이 `"stub"`.
+
+    - 실패: 연결 실패·연결 시간 초과·503 → `GPU_UNAVAILABLE`(1회 재시도), 읽기 시간 초과 → `TIMEOUT`(재시도 안 함), 422 → `AI_ERROR`(재시도 안 함), 그 밖 5xx → `AI_ERROR`(1회 재시도).
+
+    - 타임아웃: 연결 2초. 읽기 `/health` 2초 · `/embed` 10초 · `/requirements/extract` 20초 · `/restructure` 30초 · `/match` 30초 · `/gap-guide` 20초 · `/guide` 120초.
+
+    - `/guide`는 탭마다 1회 호출, JSON 응답(SSE 아님).
+
+    '
+  version: 0.2.0
+paths:
+  /embed:
+    post:
+      summary: Embed
+      operationId: embed_embed_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbedRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbedResponse'
+        '503':
+          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /restructure:
+    post:
+      summary: Restructure
+      operationId: restructure_restructure_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestructureRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestructureResponse'
+        '503':
+          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+        '502':
+          description: LLM 출력 형식 오류 (AI_ERROR)
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /requirements/extract:
+    post:
+      summary: Extract
+      operationId: extract_requirements_extract_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtractRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtractResponse'
+        '503':
+          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+        '502':
+          description: LLM 출력 형식 오류 (AI_ERROR)
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /match:
+    post:
+      summary: Match
+      operationId: match_match_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResponse'
+        '503':
+          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+        '502':
+          description: LLM 출력 형식 오류 (AI_ERROR)
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /gap-guide:
+    post:
+      summary: Gap Guide
+      operationId: gap_guide_gap_guide_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GapGuideRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GapGuideResponse'
+        '503':
+          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+        '502':
+          description: LLM 출력 형식 오류 (AI_ERROR)
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /guide:
+    post:
+      summary: Guide
+      operationId: guide_guide_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuideRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuideResponse'
+        '503':
+          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+        '502':
+          description: LLM 출력 형식 오류 (AI_ERROR)
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /health:
+    get:
+      summary: Health
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+components:
+  schemas:
+    Answer:
+      properties:
+        question:
+          type: string
+          title: Question
+        answer:
+          type: string
+          title: Answer
+      type: object
+      required:
+      - question
+      - answer
+      title: Answer
+    Candidate:
+      properties:
+        chunk_id:
+          type: integer
+          title: Chunk Id
+        chunk_type:
+          type: string
+          enum:
+          - skill
+          - career
+          - project_summary
+          - episode
+          title: Chunk Type
+        text:
+          type: string
+          title: Text
+      type: object
+      required:
+      - chunk_id
+      - chunk_type
+      - text
+      title: Candidate
+      description: 청크. 사용자 정보 없이 id와 텍스트만 (기획서 5.5)
+    CareerContent:
+      properties:
+        message:
+          type: string
+          title: Message
+        outline:
+          items:
+            $ref: '#/components/schemas/Paragraph'
+          type: array
+          minItems: 1
+          title: Outline
+        keywords:
+          items:
+            type: string
+          type: array
+          title: Keywords
+          default: []
+        avoid:
+          items:
+            type: string
+          type: array
+          title: Avoid
+          default: []
+        tab:
+          type: string
+          const: career
+          title: Tab
+        rewrites:
+          items:
+            $ref: '#/components/schemas/Rewrite'
+          type: array
+          title: Rewrites
+          default: []
+      type: object
+      required:
+      - message
+      - outline
+      - tab
+      title: CareerContent
+    Clarification:
+      properties:
+        key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+        field:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Field
+        question:
+          type: string
+          title: Question
+        example:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Example
+      type: object
+      required:
+      - question
+      title: Clarification
+      description: 확인 질문. key가 없거나 겹치면 API가 q1, q2…를 붙인다
+    Coverage:
+      properties:
+        requirement_id:
+          type: integer
+          title: Requirement Id
+        covered:
+          type: boolean
+          title: Covered
+        where:
+          type: string
+          title: Where
+      type: object
+      required:
+      - requirement_id
+      - covered
+      - where
+      title: Coverage
+    EmbedItem:
+      properties:
+        text:
+          type: string
+          minLength: 1
+          title: Text
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+      type: object
+      required:
+      - text
+      title: EmbedItem
+    EmbedRequest:
+      properties:
+        purpose:
+          type: string
+          enum:
+          - document
+          - query
+          title: Purpose
+        items:
+          items:
+            $ref: '#/components/schemas/EmbedItem'
+          type: array
+          minItems: 1
+          title: Items
+      type: object
+      required:
+      - purpose
+      - items
+      title: EmbedRequest
+    EmbedResponse:
+      properties:
+        embedding_model:
+          type: string
+          title: Embedding Model
+        dim:
+          type: integer
+          title: Dim
+        vectors:
+          items:
+            items:
+              type: number
+            type: array
+          type: array
+          title: Vectors
+      type: object
+      required:
+      - embedding_model
+      - dim
+      - vectors
+      title: EmbedResponse
+    Episode:
+      properties:
+        title:
+          type: string
+          title: Title
+        role:
+          type: string
+          title: Role
+          default: ''
+        problem:
+          type: string
+          title: Problem
+        solution:
+          type: string
+          title: Solution
+        result:
+          type: string
+          title: Result
+        skills:
+          items:
+            type: string
+          type: array
+          title: Skills
+          default: []
+        metrics:
+          items:
+            $ref: '#/components/schemas/Metric'
+          type: array
+          title: Metrics
+          default: []
+        source_spans:
+          items:
+            prefixItems:
+            - type: integer
+            - type: integer
+            type: array
+            maxItems: 2
+            minItems: 2
+          type: array
+          title: Source Spans
+          default: []
+        clarifications:
+          items:
+            $ref: '#/components/schemas/Clarification'
+          type: array
+          title: Clarifications
+          default: []
+      type: object
+      required:
+      - title
+      - problem
+      - solution
+      - result
+      title: Episode
+      description: 사례 (기획서 4.3 에피소드 모양)
+    ExtractRequest:
+      properties:
+        lines:
+          items:
+            $ref: '#/components/schemas/RequirementLine'
+          type: array
+          minItems: 1
+          title: Lines
+      type: object
+      required:
+      - lines
+      title: ExtractRequest
+    ExtractResponse:
+      properties:
+        model:
+          type: string
+          title: Model
+        prompt_version:
+          type: string
+          title: Prompt Version
+        lines:
+          items:
+            $ref: '#/components/schemas/ExtractedLine'
+          type: array
+          title: Lines
+      type: object
+      required:
+      - model
+      - prompt_version
+      - lines
+      title: ExtractResponse
+    ExtractedLine:
+      properties:
+        id:
+          type: integer
+          title: Id
+        skills_raw:
+          items:
+            type: string
+          type: array
+          title: Skills Raw
+        min_years:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Min Years
+      type: object
+      required:
+      - id
+      - skills_raw
+      title: ExtractedLine
+      description: 문구는 돌려주지 않는다(바꾸지 않으므로). 기술명은 원문 그대로, 정규화는 API가 한다
+    GapAdvice:
+      properties:
+        advice:
+          type: string
+          title: Advice
+        avoid:
+          type: string
+          title: Avoid
+      type: object
+      required:
+      - advice
+      - avoid
+      title: GapAdvice
+    GapGuide:
+      properties:
+        id:
+          type: integer
+          title: Id
+        advice:
+          type: string
+          title: Advice
+        avoid:
+          type: string
+          title: Avoid
+        cited_chunk_ids:
+          items:
+            type: integer
+          type: array
+          title: Cited Chunk Ids
+      type: object
+      required:
+      - id
+      - advice
+      - avoid
+      - cited_chunk_ids
+      title: GapGuide
+    GapGuideRequest:
+      properties:
+        requirements:
+          items:
+            $ref: '#/components/schemas/GapRequirement'
+          type: array
+          minItems: 1
+          title: Requirements
+        tasks:
+          items:
+            type: string
+          type: array
+          title: Tasks
+          default: []
+      type: object
+      required:
+      - requirements
+      title: GapGuideRequest
+    GapGuideResponse:
+      properties:
+        model:
+          type: string
+          title: Model
+        prompt_version:
+          type: string
+          title: Prompt Version
+        guides:
+          items:
+            $ref: '#/components/schemas/GapGuide'
+          type: array
+          title: Guides
+      type: object
+      required:
+      - model
+      - prompt_version
+      - guides
+      title: GapGuideResponse
+    GapRequirement:
+      properties:
+        id:
+          type: integer
+          title: Id
+        type:
+          type: string
+          enum:
+          - required
+          - preferred
+          title: Type
+        text:
+          type: string
+          title: Text
+        verdict:
+          type: string
+          enum:
+          - partial
+          - unmet
+          title: Verdict
+        adjacent:
+          items:
+            $ref: '#/components/schemas/Candidate'
+          type: array
+          title: Adjacent
+          default: []
+      type: object
+      required:
+      - id
+      - type
+      - text
+      - verdict
+      title: GapRequirement
+    GuideRequest:
+      properties:
+        tab:
+          type: string
+          enum:
+          - motive
+          - intro
+          - portfolio
+          - career
+          - image
+          title: Tab
+        company:
+          type: string
+          title: Company
+          default: ''
+        position:
+          type: string
+          title: Position
+          default: ''
+        company_intro:
+          type: string
+          title: Company Intro
+          default: ''
+        tasks:
+          items:
+            type: string
+          type: array
+          title: Tasks
+          default: []
+        requirements:
+          items:
+            $ref: '#/components/schemas/GuideRequirement'
+          type: array
+          minItems: 1
+          title: Requirements
+        feedback:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Feedback
+      type: object
+      required:
+      - tab
+      - requirements
+      title: GuideRequest
+    GuideRequirement:
+      properties:
+        id:
+          type: integer
+          title: Id
+        type:
+          type: string
+          enum:
+          - required
+          - preferred
+          title: Type
+        text:
+          type: string
+          title: Text
+        verdict:
+          type: string
+          enum:
+          - met
+          - partial
+          - unmet
+          title: Verdict
+        reason:
+          type: string
+          title: Reason
+        evidence:
+          items:
+            $ref: '#/components/schemas/Candidate'
+          type: array
+          title: Evidence
+          default: []
+        gap_guide:
+          anyOf:
+          - $ref: '#/components/schemas/GapAdvice'
+          - type: 'null'
+      type: object
+      required:
+      - id
+      - type
+      - text
+      - verdict
+      - reason
+      title: GuideRequirement
+    GuideResponse:
+      properties:
+        model:
+          type: string
+          title: Model
+        prompt_version:
+          type: string
+          title: Prompt Version
+        content:
+          oneOf:
+          - $ref: '#/components/schemas/MotiveContent'
+          - $ref: '#/components/schemas/IntroContent'
+          - $ref: '#/components/schemas/PortfolioContent'
+          - $ref: '#/components/schemas/CareerContent'
+          - $ref: '#/components/schemas/ImageContent'
+          title: Content
+          discriminator:
+            propertyName: tab
+            mapping:
+              career: '#/components/schemas/CareerContent'
+              image: '#/components/schemas/ImageContent'
+              intro: '#/components/schemas/IntroContent'
+              motive: '#/components/schemas/MotiveContent'
+              portfolio: '#/components/schemas/PortfolioContent'
+        cited_chunk_ids:
+          items:
+            type: integer
+          type: array
+          title: Cited Chunk Ids
+      type: object
+      required:
+      - model
+      - prompt_version
+      - content
+      - cited_chunk_ids
+      title: GuideResponse
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthModels:
+      properties:
+        llm:
+          type: string
+          enum:
+          - stub
+          - loading
+          - ready
+          - error
+          title: Llm
+        embedding:
+          type: string
+          enum:
+          - stub
+          - loading
+          - ready
+          - error
+          title: Embedding
+      type: object
+      required:
+      - llm
+      - embedding
+      title: HealthModels
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          const: ok
+          title: Status
+        models:
+          $ref: '#/components/schemas/HealthModels'
+      type: object
+      required:
+      - status
+      - models
+      title: HealthResponse
+    ImageContent:
+      properties:
+        tab:
+          type: string
+          const: image
+          title: Tab
+        prompts:
+          items:
+            $ref: '#/components/schemas/ImagePrompt'
+          type: array
+          minItems: 1
+          title: Prompts
+        tool_visuals:
+          items:
+            $ref: '#/components/schemas/ToolVisual'
+          type: array
+          title: Tool Visuals
+          default: []
+      type: object
+      required:
+      - tab
+      - prompts
+      title: ImageContent
+    ImagePrompt:
+      properties:
+        title:
+          type: string
+          title: Title
+        purpose:
+          type: string
+          title: Purpose
+        page:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Page
+        ratio:
+          type: string
+          title: Ratio
+        prompt:
+          type: string
+          title: Prompt
+        negative:
+          type: string
+          title: Negative
+      type: object
+      required:
+      - title
+      - purpose
+      - ratio
+      - prompt
+      - negative
+      title: ImagePrompt
+    IntroContent:
+      properties:
+        message:
+          type: string
+          title: Message
+        outline:
+          items:
+            $ref: '#/components/schemas/Paragraph'
+          type: array
+          minItems: 1
+          title: Outline
+        keywords:
+          items:
+            type: string
+          type: array
+          title: Keywords
+          default: []
+        avoid:
+          items:
+            type: string
+          type: array
+          title: Avoid
+          default: []
+        tab:
+          type: string
+          const: intro
+          title: Tab
+        coverage:
+          items:
+            $ref: '#/components/schemas/Coverage'
+          type: array
+          title: Coverage
+          default: []
+      type: object
+      required:
+      - message
+      - outline
+      - tab
+      title: IntroContent
+    MatchRequest:
+      properties:
+        requirements:
+          items:
+            $ref: '#/components/schemas/MatchRequirement'
+          type: array
+          minItems: 1
+          title: Requirements
+      type: object
+      required:
+      - requirements
+      title: MatchRequest
+    MatchRequirement:
+      properties:
+        id:
+          type: integer
+          title: Id
+        type:
+          type: string
+          enum:
+          - required
+          - preferred
+          title: Type
+        text:
+          type: string
+          title: Text
+        skills:
+          items:
+            type: string
+          type: array
+          title: Skills
+          default: []
+        min_years:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Min Years
+        candidates:
+          items:
+            $ref: '#/components/schemas/Candidate'
+          type: array
+          maxItems: 20
+          title: Candidates
+      type: object
+      required:
+      - id
+      - type
+      - text
+      - candidates
+      title: MatchRequirement
+    MatchResponse:
+      properties:
+        model:
+          type: string
+          title: Model
+        prompt_version:
+          type: string
+          title: Prompt Version
+        results:
+          items:
+            $ref: '#/components/schemas/MatchResult'
+          type: array
+          title: Results
+      type: object
+      required:
+      - model
+      - prompt_version
+      - results
+      title: MatchResponse
+    MatchResult:
+      properties:
+        id:
+          type: integer
+          title: Id
+        verdict:
+          type: string
+          enum:
+          - met
+          - partial
+          - unmet
+          title: Verdict
+        evidence_chunk_ids:
+          items:
+            type: integer
+          type: array
+          title: Evidence Chunk Ids
+        reason:
+          type: string
+          title: Reason
+      type: object
+      required:
+      - id
+      - verdict
+      - evidence_chunk_ids
+      - reason
+      title: MatchResult
+    Metric:
+      properties:
+        name:
+          type: string
+          title: Name
+        before:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Before
+        after:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: After
+        source:
+          type: string
+          enum:
+          - raw_text
+          - answer
+          title: Source
+          default: raw_text
+      type: object
+      required:
+      - name
+      title: Metric
+    MotiveContent:
+      properties:
+        message:
+          type: string
+          title: Message
+        outline:
+          items:
+            $ref: '#/components/schemas/Paragraph'
+          type: array
+          minItems: 1
+          title: Outline
+        keywords:
+          items:
+            type: string
+          type: array
+          title: Keywords
+          default: []
+        avoid:
+          items:
+            type: string
+          type: array
+          title: Avoid
+          default: []
+        tab:
+          type: string
+          const: motive
+          title: Tab
+      type: object
+      required:
+      - message
+      - outline
+      - tab
+      title: MotiveContent
+    Page:
+      properties:
+        order:
+          type: integer
+          title: Order
+        title:
+          type: string
+          title: Title
+        hint:
+          type: string
+          title: Hint
+        kind:
+          type: string
+          enum:
+          - cover
+          - text
+          - diagram
+          - chart
+          title: Kind
+        sources:
+          items:
+            type: integer
+          type: array
+          title: Sources
+          default: []
+      type: object
+      required:
+      - order
+      - title
+      - hint
+      - kind
+      title: Page
+    Paragraph:
+      properties:
+        title:
+          type: string
+          title: Title
+        detail:
+          type: string
+          title: Detail
+        sources:
+          items:
+            type: integer
+          type: array
+          title: Sources
+          default: []
+      type: object
+      required:
+      - title
+      - detail
+      title: Paragraph
+    PortfolioContent:
+      properties:
+        message:
+          type: string
+          title: Message
+        outline:
+          items:
+            $ref: '#/components/schemas/Paragraph'
+          type: array
+          minItems: 1
+          title: Outline
+        keywords:
+          items:
+            type: string
+          type: array
+          title: Keywords
+          default: []
+        avoid:
+          items:
+            type: string
+          type: array
+          title: Avoid
+          default: []
+        tab:
+          type: string
+          const: portfolio
+          title: Tab
+        pages:
+          items:
+            $ref: '#/components/schemas/Page'
+          type: array
+          maxItems: 8
+          minItems: 4
+          title: Pages
+      type: object
+      required:
+      - message
+      - outline
+      - tab
+      - pages
+      title: PortfolioContent
+    RequirementLine:
+      properties:
+        id:
+          type: integer
+          title: Id
+        type:
+          type: string
+          enum:
+          - required
+          - preferred
+          title: Type
+        text:
+          type: string
+          title: Text
+      type: object
+      required:
+      - id
+      - type
+      - text
+      title: RequirementLine
+    RestructureRequest:
+      properties:
+        mode:
+          type: string
+          enum:
+          - initial
+          - split
+          - episode
+          title: Mode
+        title:
+          type: string
+          title: Title
+          default: ''
+        source_text:
+          type: string
+          minLength: 1
+          title: Source Text
+        skills:
+          items:
+            type: string
+          type: array
+          title: Skills
+          default: []
+        previous_episodes:
+          items:
+            $ref: '#/components/schemas/Episode'
+          type: array
+          title: Previous Episodes
+          default: []
+        current_episodes:
+          items:
+            $ref: '#/components/schemas/Episode'
+          type: array
+          title: Current Episodes
+          default: []
+        target_episode:
+          anyOf:
+          - $ref: '#/components/schemas/Episode'
+          - type: 'null'
+        feedback:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Feedback
+        answer:
+          anyOf:
+          - $ref: '#/components/schemas/Answer'
+          - type: 'null'
+      type: object
+      required:
+      - mode
+      - source_text
+      title: RestructureRequest
+      description: mode=split 이면 feedback(공백 아님) 필수, mode=episode 면 target_episode 필수. 어기면 422
+    RestructureResponse:
+      properties:
+        model:
+          type: string
+          title: Model
+        prompt_version:
+          type: string
+          title: Prompt Version
+        episodes:
+          items:
+            $ref: '#/components/schemas/Episode'
+          type: array
+          title: Episodes
+      type: object
+      required:
+      - model
+      - prompt_version
+      - episodes
+      title: RestructureResponse
+    Rewrite:
+      properties:
+        before:
+          type: string
+          title: Before
+        after:
+          type: string
+          title: After
+        requirement_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Requirement Id
+      type: object
+      required:
+      - before
+      - after
+      title: Rewrite
+    ToolVisual:
+      properties:
+        name:
+          type: string
+          title: Name
+        page:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Page
+        kind:
+          type: string
+          enum:
+          - diagram
+          - chart
+          title: Kind
+      type: object
+      required:
+      - name
+      - kind
+      title: ToolVisual
+      description: 이미지 생성 대신 도구로 만들 시각자료 (글자·수치가 필요한 도식·차트)
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

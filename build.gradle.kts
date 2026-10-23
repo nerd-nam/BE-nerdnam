@@ -48,6 +48,8 @@ dependencies {
 
     // 테스트: JUnit5 + AssertJ + Testcontainers(실제 PostgreSQL+pgvector 컨테이너)
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // C-04 계약 YAML을 읽어 실제 JSON 요청·응답과 대조한다
+    testImplementation("tools.jackson.dataformat:jackson-dataformat-yaml")
     testImplementation("org.springframework.boot:spring-boot-starter-security-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
