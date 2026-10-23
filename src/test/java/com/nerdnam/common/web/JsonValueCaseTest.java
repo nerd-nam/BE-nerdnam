@@ -19,6 +19,26 @@ import org.junit.jupiter.api.Test;
 class JsonValueCaseTest extends ApiTestSupport {
 
     @Test
+    void 검색_조건의_enum도_소문자로_받는다() throws Exception {
+        getJson(newMember(), "/api/skills?query=Redis&category=database")
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].category").value("database"));
+    }
+
+    @Test
+    void 분석_실패_이유는_리포트와_분석_기록에서_소문자로_준다() throws Exception {
+        Long member = newMember();
+        Long posting = readLong(postJson(member, "{\"companyName\":\"회사\"}", "/api/job-postings"), "$.id");
+        Long analysis = jdbc.sql("""
+                INSERT INTO app.fit_analysis (member_id, job_posting_id, status, failure_code)
+                VALUES (:m, :p, 'FAILED', 'TIMEOUT') RETURNING id
+                """).param("m", member).param("p", posting).query(Long.class).single();
+        getJson(member, "/api/fit-analyses/{id}", analysis)
+                .andExpect(jsonPath("$.failureCode").value("timeout"));
+        getJson(member, "/api/job-postings/{id}/analyses", posting)
+                .andExpect(jsonPath("$[0].failureCode").value("timeout"));
+    }
+
+    @Test
     void 응답의_enum_값은_소문자다() throws Exception {
         Long member = newMember();
 

@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -123,6 +124,49 @@ class SessionLoginTest {
         Long member = members.loginWithSocial(new SocialProfile(SocialProvider.GOOGLE, uid(), null, "A"));
 
         mvc.perform(post("/api/auth/logout").with(login(member)).with(csrf())).andExpect(status().isNoContent());
+    }
+
+    @Test
+    void 동의_전에는_조회와_등록을_막고_동의하면_허용한다() throws Exception {
+        Long member = members.loginWithSocial(new SocialProfile(SocialProvider.GOOGLE, uid(), null, "미동의 회원"));
+        for (String path : List.of("/api/me/onboarding", "/api/me/skills", "/api/projects", "/api/job-postings")) {
+            mvc.perform(get(path).with(login(member)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.title").value("CONSENT_REQUIRED"))
+                    .andExpect(jsonPath("$.termsVersion").value(members.me(member).termsVersion()));
+        }
+        mvc.perform(post("/api/projects").with(login(member)).with(csrf())).andExpect(status().isForbidden());
+        assertThat(jdbc.sql("SELECT count(*) FROM app.project WHERE member_id = :m").param("m", member)
+                .query(Integer.class).single()).isZero();
+
+        mvc.perform(post("/api/me/consents").with(login(member)).with(csrf())).andExpect(status().isOk());
+        mvc.perform(get("/api/projects").with(login(member))).andExpect(status().isOk());
+        mvc.perform(post("/api/projects").with(login(member)).with(csrf())).andExpect(status().isCreated());
+    }
+
+    @Test
+    void 이전_약관에만_동의한_기존_회원도_현재_버전에_다시_동의해야_한다() throws Exception {
+        Long member = members.loginWithSocial(new SocialProfile(SocialProvider.GOOGLE, uid(), null, "기존 회원"));
+        members.agreeToTerms(member);
+        jdbc.sql("UPDATE app.member_consent SET terms_version = '이전-버전' WHERE member_id = :m")
+                .param("m", member).update();
+
+        mvc.perform(get("/api/me").with(login(member)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.consentRequired").value(true));
+        mvc.perform(get("/api/job-postings").with(login(member)))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.title").value("CONSENT_REQUIRED"));
+        mvc.perform(post("/api/me/consents").with(login(member)).with(csrf())).andExpect(status().isOk());
+        mvc.perform(get("/api/job-postings").with(login(member))).andExpect(status().isOk());
+        assertThat(jdbc.sql("SELECT count(*) FROM app.member_consent WHERE member_id = :m").param("m", member)
+                .query(Integer.class).single()).isEqualTo(4);
+    }
+
+    @Test
+    void 동의하지_않고_탈퇴할_수_있다() throws Exception {
+        Long member = members.loginWithSocial(new SocialProfile(SocialProvider.GOOGLE, uid(), null, "탈퇴 회원"));
+        mvc.perform(delete("/api/me").with(login(member)).with(csrf())).andExpect(status().isNoContent());
+        assertThat(jdbc.sql("SELECT count(*) FROM app.member WHERE id = :m").param("m", member)
+                .query(Integer.class).single()).isZero();
     }
 
     private static RequestPostProcessor login(Long memberId) {

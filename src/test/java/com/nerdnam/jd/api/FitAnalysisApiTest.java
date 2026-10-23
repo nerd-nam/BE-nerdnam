@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.nerdnam.support.ApiTestSupport;
+import com.nerdnam.project.application.ProjectEvidenceQuery;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -16,6 +19,50 @@ import org.springframework.test.web.servlet.ResultActions;
  * 요건에서 영문 기술명·"N년"을 뽑고, 후보 청크에 그 기술명이 있으면 충족, 기술명이 없는 요건은 후보가 있으면 부분 충족.
  */
 class FitAnalysisApiTest extends ApiTestSupport {
+
+    @Autowired
+    ProjectEvidenceQuery projectEvidence;
+
+    @Test
+    void 이전_리포트의_프로젝트_근거에도_현재_재등록_상태를_붙인다() throws Exception {
+        Long member = memberWithExperience(36);
+        Long project = jdbc.sql("SELECT id FROM app.project WHERE member_id = :m")
+                .param("m", member).query(Long.class).single();
+        Long episode = readLong(getJson(member, "/api/projects/{id}/review", project), "$.episodes[0].id");
+        Long posting = createPosting(member, """
+                {"companyName":"회사", "positionName":"개발자", "required":["Redis 경험"]}
+                """);
+        postJson(member, null, "/api/job-postings/{id}/analyses", posting).andExpect(status().isAccepted());
+        Long analysis = readLong(getJson(member, "/api/job-postings/{id}/report", posting), "$.analysisId");
+        assertProjectEvidence(member, analysis, false);
+
+        postJson(member, null, "/api/projects/{id}/reopen", project).andExpect(status().isOk());
+        assertProjectEvidence(member, analysis, true);
+        getJson(member, "/api/fit-analyses/{id}", analysis)
+                .andExpect(jsonPath("$.matches[0].evidences[?(@.sourceType == 'skill')].reregistering")
+                        .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(false))));
+
+        // 공개 조회도 회원 소유권을 확인한다. 사례 id와 프로젝트 id가 따로 새면 안 된다.
+        Long other = newMember();
+        assertThat(projectEvidence.episodes(other, List.of(episode))).isEmpty();
+        assertThat(projectEvidence.projects(other, List.of(project))).isEmpty();
+
+        postJson(member, null, "/api/projects/{id}/split", project).andExpect(status().isAccepted());
+        assertProjectEvidence(member, analysis, true);
+        Long nextEpisode = readLong(getJson(member, "/api/projects/{id}/review", project), "$.episodes[0].id");
+        postJson(member, null, "/api/projects/{id}/episodes/{e}/confirm", project, nextEpisode).andExpect(status().isOk());
+        postJson(member, null, "/api/projects/{id}/confirm", project).andExpect(status().isOk());
+        assertProjectEvidence(member, analysis, false);
+    }
+
+    private void assertProjectEvidence(Long member, Long analysis, boolean expected) throws Exception {
+        for (String type : List.of("episode", "project_summary")) {
+            getJson(member, "/api/fit-analyses/{id}", analysis)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.matches[0].evidences[?(@.sourceType == '%s')].reregistering".formatted(type))
+                            .value(org.hamcrest.Matchers.contains(expected)));
+        }
+    }
 
     @Test
     void 분석하면_요건별_판정_근거_갭_가이드_한_줄_진단이_나온다() throws Exception {
@@ -130,8 +177,8 @@ class FitAnalysisApiTest extends ApiTestSupport {
 
         ResultActions list = getJson(member, "/api/job-postings").andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(draft))).asString().contains("DRAFT");
-        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(analyzed))).asString().contains("COMPLETED");
+        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(draft))).asString().contains("draft");
+        assertThat((Object) read(list, "$[?(@.id == %d)].status".formatted(analyzed))).asString().contains("completed");
         assertThat((Object) read(list, "$[?(@.id == %d)].requiredMet".formatted(analyzed))).asString().contains("1");
     }
 
@@ -195,6 +242,7 @@ class FitAnalysisApiTest extends ApiTestSupport {
 
         getJson(other, "/api/job-postings/{id}", posting).andExpect(status().isNotFound());
         getJson(other, "/api/job-postings/{id}/report", posting).andExpect(status().isNotFound());
+        getJson(other, "/api/job-postings/{id}/analyses", posting).andExpect(status().isNotFound());
         getJson(other, "/api/fit-analyses/{id}", analysisId).andExpect(status().isNotFound());
         postJson(other, null, "/api/job-postings/{id}/analyses", posting).andExpect(status().isNotFound());
         getJson(other, "/api/job-postings").andExpect(jsonPath("$", hasSize(0)));

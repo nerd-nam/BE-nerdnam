@@ -25,6 +25,19 @@ class CareerApiTest extends ApiTestSupport {
             """;
 
     @Test
+    void 미래_월은_경력_생성과_수정에서_400이다() throws Exception {
+        Long member = newMember();
+        String next = java.time.YearMonth.now(java.time.ZoneId.of("Asia/Seoul")).plusMonths(1).toString();
+        create(member, CAREER.formatted(next, "null")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("이번 달까지만 입력할 수 있어요."));
+        Long career = idOf(create(member, CAREER.formatted("2023-03", "null")));
+        String updated = CAREER.formatted("2023-03", "\"" + next + "\"").strip();
+        updated = updated.substring(0, updated.length() - 1) + ", \"version\": 0}";
+        putJson(member, updated, "/api/me/careers/{id}", career).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("이번 달까지만 입력할 수 있어요."));
+    }
+
+    @Test
     void 경력을_추가하면_빈_업무_줄은_버리고_재직_중을_표시한다() throws Exception {
         Long member = newMember();
 

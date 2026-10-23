@@ -50,7 +50,7 @@ public class PostingListQuery {
                 .query((rs, n) -> {
                     boolean completed = "COMPLETED".equals(rs.getString("status"));
                     return new PostingSummary(rs.getLong("id"), rs.getString("company_name"), rs.getString("position_name"),
-                            rs.getString("status") == null ? "DRAFT" : rs.getString("status"),
+                            rs.getString("status") == null ? "draft" : rs.getString("status").toLowerCase(java.util.Locale.ROOT),
                             (Long) rs.getObject("analysis_id"),
                             rs.getTimestamp("requested_at") == null ? null : rs.getTimestamp("requested_at").toInstant(),
                             completed ? rs.getInt("required_met") : null, completed ? rs.getInt("required_total") : null,

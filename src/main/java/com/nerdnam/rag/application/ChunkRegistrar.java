@@ -2,6 +2,7 @@ package com.nerdnam.rag.application;
 
 import com.nerdnam.profile.application.ProfileChanged;
 import com.nerdnam.project.domain.ProjectConfirmed;
+import com.nerdnam.project.domain.ProjectDeleted;
 import com.nerdnam.rag.infrastructure.ChunkSourceReader;
 import com.nerdnam.rag.infrastructure.ChunkStore;
 import com.nerdnam.rag.infrastructure.ChunkStore.Stored;
@@ -51,6 +52,14 @@ public class ChunkRegistrar {
 
     @EventListener
     public void on(ProfileChanged event) {
+        syncProfile(event.memberId());
+        embedAfterCommit(event.memberId());
+    }
+
+    @EventListener
+    public void on(ProjectDeleted event) {
+        store.delete(event.memberId(), store.projectChunks(event.memberId(), event.projectId())
+                .stream().map(Stored::id).toList());
         syncProfile(event.memberId());
         embedAfterCommit(event.memberId());
     }

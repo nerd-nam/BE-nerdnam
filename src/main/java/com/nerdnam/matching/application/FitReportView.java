@@ -21,12 +21,12 @@ public record FitReportView(Long analysisId, Long postingId, String companyName,
     }
 
     /**
-     * 근거 카드. 웹은 sourceType 으로 갈 화면을 정한다 (기획서 v1.17 S08):
+     * 근거 카드. 웹은 sourceType·reregistering 으로 갈 화면을 정한다 (기획서 v1.25 S08):
      * EPISODE → S05 읽기 모드에서 그 사례를 펼친다(projectId + sourceId = 사례 id),
-     * PROJECT_SUMMARY → S05 읽기 모드(projectId = sourceId), CAREER → S03(sourceId),
-     * SKILL → S02(sourceId = 기술스택 항목 id). 경력·기술 근거를 팝업으로 보여 줄지는 FE 가 정한다.
+     * PROJECT_SUMMARY → S05 읽기 모드(projectId = sourceId). 재등록 중이면 둘 다 S06 프로젝트 카드로 간다.
+     * CAREER·SKILL → S06 내 경험. 프로젝트가 아닌 근거의 reregistering 은 false다.
      */
     public record EvidenceView(int rank, long chunkId, EvidenceSourceType sourceType, long sourceId, int sourceVersion,
-                               Long projectId, String label, String snippet) {
+                               Long projectId, boolean reregistering, boolean deleted, String label, String snippet) {
     }
 }

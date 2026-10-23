@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -71,6 +72,12 @@ public class ProjectController {
     @GetMapping("/{projectId}")
     public Detail get(@CurrentMemberId Long memberId, @PathVariable Long projectId) {
         return drafts.get(memberId, projectId);
+    }
+
+    @DeleteMapping("/{projectId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@CurrentMemberId Long memberId, @PathVariable Long projectId) {
+        drafts.delete(memberId, projectId);
     }
 
     /** 자동 임시 저장. version 은 조회 때 받은 값 (다르면 409) */

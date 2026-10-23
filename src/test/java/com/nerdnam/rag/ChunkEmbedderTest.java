@@ -75,4 +75,22 @@ class ChunkEmbedderTest {
 
         verify(store, never()).pending(anyLong(), anyInt());
     }
+
+    @Test
+    void 생성_모델이_꺼져_있어도_임베딩이_준비됐으면_재처리한다() {
+        when(store.membersWithPending(anyInt())).thenReturn(List.of(7L));
+        when(ai.health()).thenReturn(new AiServerHealth(false, java.util.Map.of("llm", "error", "embedding", "ready")));
+        when(store.pending(7L, 32)).thenReturn(List.of());
+        embedder.retryPending();
+        verify(store).pending(7L, 32);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"loading", "error", "stub"})
+    void 임베딩이_준비되지_않으면_재처리하지_않는다(String state) {
+        when(store.membersWithPending(anyInt())).thenReturn(List.of(7L));
+        when(ai.health()).thenReturn(new AiServerHealth(false, java.util.Map.of("llm", "ready", "embedding", state)));
+        embedder.retryPending();
+        verify(store, never()).pending(anyLong(), anyInt());
+    }
 }

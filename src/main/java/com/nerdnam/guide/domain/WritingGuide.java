@@ -51,6 +51,14 @@ public class WritingGuide {
     @Column(name = "content")
     private Map<String, Object> content;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "citation_snapshots")
+    private java.util.List<CitationSnapshot> citationSnapshots;
+
+    public void rememberCitations(java.util.List<CitationSnapshot> citations) {
+        this.citationSnapshots = java.util.List.copyOf(citations);
+    }
+
     @Column(name = "feedback")
     private String feedback;
 

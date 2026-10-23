@@ -18,6 +18,46 @@ import org.springframework.test.web.servlet.ResultActions;
  */
 class ProjectApiTest extends ApiTestSupport {
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"draft", "review", "confirmed", "reregistering"})
+    void 모든_상태에서_프로젝트와_검색_청크를_삭제한다(String state) throws Exception {
+        Long member = newMember();
+        Long project = createProject(member, "Redis 캐시로 응답을 50% 줄였다.");
+        if (!state.equals("draft")) {
+            postJson(member, null, "/api/projects/{id}/split", project).andExpect(status().isAccepted());
+        }
+        if (state.equals("confirmed") || state.equals("reregistering")) {
+            Long episode = readLong(getJson(member, "/api/projects/{id}/review", project), "$.episodes[0].id");
+            postJson(member, null, "/api/projects/{id}/episodes/{e}/confirm", project, episode).andExpect(status().isOk());
+            postJson(member, null, "/api/projects/{id}/confirm", project).andExpect(status().isOk());
+            assertThat(jdbc.sql("SELECT count(*) FROM rag.chunk WHERE project_id = :id")
+                    .param("id", project).query(Integer.class).single()).isPositive();
+        }
+        if (state.equals("reregistering")) {
+            postJson(member, null, "/api/projects/{id}/reopen", project).andExpect(status().isOk());
+        }
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/projects/{id}", project)
+                .header(MEMBER_HEADER, newMember())).andExpect(status().isNotFound());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/projects/{id}", project)
+                .header(MEMBER_HEADER, member)).andExpect(status().isNoContent());
+        getJson(member, "/api/projects/{id}", project).andExpect(status().isNotFound());
+        assertThat(jdbc.sql("SELECT count(*) FROM rag.chunk WHERE project_id = :id")
+                .param("id", project).query(Integer.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM app.episode WHERE project_id = :id")
+                .param("id", project).query(Integer.class).single()).isZero();
+    }
+
+    @Test
+    void 미래_월은_프로젝트_생성과_수정에서_400이다() throws Exception {
+        Long member = newMember();
+        String next = java.time.YearMonth.now(java.time.ZoneId.of("Asia/Seoul")).plusMonths(1).toString();
+        postJson(member, "{\"periodStart\":\"%s\"}".formatted(next), "/api/projects")
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value("이번 달까지만 입력할 수 있어요."));
+        Long project = readLong(postJson(member, null, "/api/projects"), "$.id");
+        putJson(member, "{\"periodEnd\":\"%s\",\"version\":0}".formatted(next), "/api/projects/{id}", project)
+                .andExpect(status().isBadRequest());
+    }
+
     /** 문단 1: 숫자 있음 → 질문 없음 / 문단 2: 숫자 없음 → 확인 질문 */
     private static final String RAW_TEXT = """
             결제 승인 응답이 1.2초까지 느려졌다. Spring Boot 서버에 Redis 캐시를 붙였다. 평균 응답이 0.3초가 됐다.
@@ -273,6 +313,9 @@ class ProjectApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.title").value("AI_JOB_RUNNING"))
                 .andExpect(jsonPath("$.runningJobId").value(running));
         getJson(member, "/api/projects/{id}", project).andExpect(jsonPath("$.runningJobId").value(running));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/projects/{id}", project)
+                .header(MEMBER_HEADER, member)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.runningJobId").value(running));
     }
 
     @Test

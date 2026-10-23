@@ -28,6 +28,10 @@ public class ProjectPeriod {
     }
 
     public static ProjectPeriod of(YearMonth start, YearMonth end) {
+        YearMonth current = YearMonth.now(java.time.ZoneId.of("Asia/Seoul"));
+        if ((start != null && start.isAfter(current)) || (end != null && end.isAfter(current))) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이번 달까지만 입력할 수 있어요.");
+        }
         if (start != null && end != null && end.isBefore(start)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "종료 월이 시작 월보다 빨라요.");
         }

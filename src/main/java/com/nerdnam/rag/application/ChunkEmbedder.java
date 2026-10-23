@@ -87,7 +87,7 @@ public class ChunkEmbedder {
     @Scheduled(fixedDelayString = "PT5M", initialDelayString = "PT1M")
     public void retryPending() {
         List<Long> members = store.membersWithPending(50);
-        if (members.isEmpty() || !ai.health().ready()) {
+        if (members.isEmpty() || !ai.health().embeddingReady()) {
             return;
         }
         members.forEach(this::embedPending);
