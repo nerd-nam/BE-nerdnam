@@ -34,6 +34,10 @@ public class EmploymentPeriod {
         if (startMonth == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "입사 월을 입력해 주세요.");
         }
+        YearMonth current = YearMonth.now(java.time.ZoneId.of("Asia/Seoul"));
+        if ((startMonth != null && startMonth.isAfter(current)) || (endMonth != null && endMonth.isAfter(current))) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT, "이번 달까지만 입력할 수 있어요.");
+        }
         if (endMonth != null && endMonth.isBefore(startMonth)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "퇴사 월이 입사 월보다 빨라요.");
         }

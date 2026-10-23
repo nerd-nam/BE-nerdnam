@@ -35,4 +35,15 @@ class EmploymentPeriodTest {
     void 입사_월은_필수다() {
         assertThatThrownBy(() -> EmploymentPeriod.of(null, null)).isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    void 이번_달은_허용하지만_미래의_시작과_종료_월은_거부한다() {
+        YearMonth current = YearMonth.now(java.time.ZoneId.of("Asia/Seoul"));
+        assertThat(EmploymentPeriod.of(current, current).endMonth()).isEqualTo(current);
+        assertThat(EmploymentPeriod.of(current, null).endMonth()).isNull();
+        assertThatThrownBy(() -> EmploymentPeriod.of(current.plusMonths(1), null))
+                .isInstanceOf(BusinessException.class).hasMessage("이번 달까지만 입력할 수 있어요.");
+        assertThatThrownBy(() -> EmploymentPeriod.of(current, current.plusMonths(1)))
+                .isInstanceOf(BusinessException.class).hasMessage("이번 달까지만 입력할 수 있어요.");
+    }
 }
