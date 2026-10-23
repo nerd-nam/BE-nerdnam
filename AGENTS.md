@@ -45,7 +45,7 @@ cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 �
   - **v1.28 / BE #12:** AI 서버 504는 `TIMEOUT`, 재시도 없음. 502·500은 기존처럼 1회 재시도(SPEC PR #41).
   - **v1.29~v1.31 / BE #14~#16:** 임베딩 모델만 ready여도 재처리. 경력·프로젝트 미래 월 거부. 모든 상태 프로젝트 삭제, 청크 즉시 삭제, 이전 근거 이름·삭제 표시 유지. S10 공고 목록·삭제는 기존 API와 대조 완료(SPEC PR #43~#45).
   - **C-03 v0.1.0 / BE #4~#9:** `contracts/web-api.openapi.yaml` 생성·대조 테스트. 재등록 상태·분석 기록·동의 제한·피드백 검증 포함. 연결 방법과 이슈별 결과는 `docs/08`.
-  - **C-03 v0.1.1 / FE 검토 반영 (2026-10-23):** 작성 방향 탭 이름을 응답도 `motive`…로 통일(`GuideTab.path()`에 `@JsonValue`), 응답은 **`@Nullable` 표시한 필드만** null 가능, 스키마 이름을 짧게(+`x-java-class`). 자세한 것은 `docs/08`.
+  - **C-03 v0.1.2 / FE 검토 반영·확정 (2026-10-23):** 작성 방향 탭 이름을 응답도 `motive`…로 통일(`GuideTab.path()`에 `@JsonValue`), 응답은 **`@Nullable` 표시한 필드만** null 가능, 스키마 이름을 짧게(+`x-java-class`), **같은 값이던 `path` 응답 필드 제거**(FE 확인). 자세한 것은 `docs/08`.
   - **v1.32 (SPEC PR #47, 검토 중):** C-03 계약을 SPEC 에 올리고 C-02 의 엔드포인트 칸·공통 질문을 결정으로 채웠다. 인증(쿠키 세션 + CSRF)·오류 형식(ProblemDetail)·AI 작업 폴링·S01 동의 순서(소셜은 회원·세션이 먼저 생기므로 "가입 차단" 대신 **동의 전 403 CONSENT_REQUIRED**)·S08 분석 기록과 삭제·재등록 중 근거·S09 `content` ↔ `citations` 연결·다시 만들기 피드백 필수·S04 재구성 중 삭제 409. **세 팀 검토 대상이라 머지하지 않았다.**
   - D-1 포트폴리오 시각자료는 안내만 (BE 는 `visual` 을 만들지 않음)
 - 세션은 Redis 저장(키 `nerdnam:session:sessions:{id}`, 7일). `docker compose up -d` 에 Redis 포함, 꺼져 있으면 세션 쓰는 요청이 500(헤더 인증은 영향 없음).

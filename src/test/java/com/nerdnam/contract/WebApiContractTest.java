@@ -166,10 +166,10 @@ class WebApiContractTest extends ApiTestSupport {
         JsonNode schemas = YAML.readTree(Files.readString(COPY)).path("components").path("schemas");
         JsonNode expected = appJson.valueToTree(java.util.Arrays.stream(GuideTab.values()).map(GuideTab::path).toList());
         for (String schema : List.of("Guide", "TabStatus")) {
-            for (String field : List.of("tab", "path")) {
-                assertThat(schemas.path(schema).path("properties").path(field).path("enum"))
-                        .as("%s.%s", schema, field).isEqualTo(expected);
-            }
+            assertThat(schemas.path(schema).path("properties").path("tab").path("enum"))
+                    .as("%s.tab", schema).isEqualTo(expected);
+            assertThat(schemas.path(schema).path("properties").path("path").isMissingNode())
+                    .as("%s.path 는 tab 과 같은 값이라 뺐다 (SPEC PR #47)", schema).isTrue();
         }
         JsonNode parameter = YAML.readTree(Files.readString(COPY)).path("paths")
                 .path("/api/job-postings/{postingId}/guides/{tab}").path("get").path("parameters");

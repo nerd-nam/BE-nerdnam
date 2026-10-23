@@ -43,7 +43,7 @@ final class WebApiContractDocument {
 
     private void metadata() {
         document.put("openapi", "3.1.0");
-        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.1")
+        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.2")
                 .put("description", """
                         C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
                         JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -123,9 +123,6 @@ final class WebApiContractDocument {
                 .put("description", "프로젝트·사례 근거는 현재 재등록 여부. true면 S06 프로젝트 카드로 이동한다. 기술·경력은 false.");
         property("com.nerdnam.guide.application.GuideViews.Guide", "content")
                 .put("description", "탭별 내용은 C-04 v0.2 GuideResponse.content를 보존하고 cited_chunk_ids를 추가한다. sources의 이름·원본 id는 별도 citations 목록으로 연결한다. 로컬 스텁은 형식이 다를 수 있다.");
-        for (String name : List.of("com.nerdnam.guide.application.GuideViews.Guide", "com.nerdnam.guide.application.GuideViews.TabStatus")) {
-            property(name, "path").set("enum", json.valueToTree(Arrays.stream(GuideTab.values()).map(GuideTab::path).toList()));
-        }
         try (var input = WebApiContractDocument.class.getResourceAsStream("/contracts/guide.json")) {
             JsonNode guide = json.readTree(input).path("guides").path("motive");
             ObjectNode content = ((ObjectNode) guide.path("content")).deepCopy();

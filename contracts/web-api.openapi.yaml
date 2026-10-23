@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: "nerdnam 웹 API"
-  version: "0.1.1"
+  version: "0.1.2"
   description: |
     C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
     JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -2632,14 +2632,6 @@ components:
         id:
           type: "integer"
           format: "int64"
-        path:
-          type: "string"
-          enum:
-          - "motive"
-          - "intro"
-          - "portfolio"
-          - "career"
-          - "image"
         runningJobId:
           anyOf:
           - type: "integer"
@@ -2662,7 +2654,6 @@ components:
       required:
       - "id"
       - "tab"
-      - "path"
       - "generationNo"
       - "status"
       - "content"
@@ -2706,14 +2697,6 @@ components:
           - type: "integer"
             format: "int32"
           - type: "null"
-        path:
-          type: "string"
-          enum:
-          - "motive"
-          - "intro"
-          - "portfolio"
-          - "career"
-          - "image"
         runningJobId:
           anyOf:
           - type: "integer"
@@ -2737,7 +2720,6 @@ components:
           - "image"
       required:
       - "tab"
-      - "path"
       - "status"
       - "generationNo"
       - "runningJobId"
@@ -4465,7 +4447,6 @@ components:
         postingId: 1
         tabs:
         - generationNo: 1
-          path: "motive"
           runningJobId: null
           status: "generating"
           tab: "motive"
@@ -4523,7 +4504,6 @@ components:
         feedback: null
         generationNo: 1
         id: 1
-        path: "motive"
         runningJobId: null
         status: "generating"
         tab: "motive"

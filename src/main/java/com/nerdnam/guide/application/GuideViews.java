@@ -18,13 +18,17 @@ public final class GuideViews {
                            List<TabStatus> tabs) {
     }
 
-    /** @param status 아직 만든 적이 없으면 null */
-    public record TabStatus(GuideTab tab, String path, @Nullable GuideStatus status, @Nullable Integer generationNo,
+    /**
+      * @param tab    웹 주소와 같은 이름(`motive` 등). 전에는 같은 값을 `path` 로도 줬는데 헷갈려서 뺐다
+      *               (C-03 검토, SPEC PR #47 FE 요청)
+      * @param status 아직 만든 적이 없으면 null
+      */
+    public record TabStatus(GuideTab tab, @Nullable GuideStatus status, @Nullable Integer generationNo,
                             @Nullable Long runningJobId) {
     }
 
     /** 탭 하나의 최근 결과 + "이 방향에 쓰인 근거" */
-    public record Guide(Long id, GuideTab tab, String path, int generationNo, GuideStatus status,
+    public record Guide(Long id, GuideTab tab, int generationNo, GuideStatus status,
                         @Nullable Map<String, Object> content, @Nullable String feedback, List<Citation> citations,
                         Instant createdAt, @Nullable Instant completedAt, @Nullable Long runningJobId) {
     }
