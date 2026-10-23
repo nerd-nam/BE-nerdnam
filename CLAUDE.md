@@ -45,6 +45,7 @@ cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 �
   - **v1.28 / BE #12:** AI 서버 504는 `TIMEOUT`, 재시도 없음. 502·500은 기존처럼 1회 재시도(SPEC PR #41).
   - **v1.29~v1.31 / BE #14~#16:** 임베딩 모델만 ready여도 재처리. 경력·프로젝트 미래 월 거부. 모든 상태 프로젝트 삭제, 청크 즉시 삭제, 이전 근거 이름·삭제 표시 유지. S10 공고 목록·삭제는 기존 API와 대조 완료(SPEC PR #43~#45).
   - **C-03 v0.1.0 / BE #4~#9:** `contracts/web-api.openapi.yaml` 생성·대조 테스트. 재등록 상태·분석 기록·동의 제한·피드백 검증 포함. 연결 방법과 이슈별 결과는 `docs/08`.
+  - **v1.32 (SPEC PR #47, 검토 중):** C-03 계약을 SPEC 에 올리고 C-02 의 엔드포인트 칸·공통 질문을 결정으로 채웠다. 인증(쿠키 세션 + CSRF)·오류 형식(ProblemDetail)·AI 작업 폴링·S01 동의 순서(소셜은 회원·세션이 먼저 생기므로 "가입 차단" 대신 **동의 전 403 CONSENT_REQUIRED**)·S08 분석 기록과 삭제·재등록 중 근거·S09 `content` ↔ `citations` 연결·다시 만들기 피드백 필수·S04 재구성 중 삭제 409. **세 팀 검토 대상이라 머지하지 않았다.**
   - D-1 포트폴리오 시각자료는 안내만 (BE 는 `visual` 을 만들지 않음)
 - 세션은 Redis 저장(키 `nerdnam:session:sessions:{id}`, 7일). `docker compose up -d` 에 Redis 포함, 꺼져 있으면 세션 쓰는 요청이 500(헤더 인증은 영향 없음).
 - BE 열린 이슈 #4~#9·#12·#14~#16을 검토·수정했다. #5는 이미 해결된 브랜치 문제, #7·#8은 기존 구현에 계약·회귀 검증을 보강했다. 이슈는 PR 검토 후 정리한다.
@@ -56,7 +57,7 @@ cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 �
 1. 실제 AI 서버 연결 후 흐름 확인, 20초 목표 측정, 검색 가중치 조정. 연결하면 `nerdnam.ai.stub=false`. AI 레포(`../AI-nerdnam`)가 가짜 응답 모드로 떠 있으면 GPU 없이도 붙여 볼 수 있고, Mac 에서는 원본 Qwen3.5-4B(bf16)를 먼저 시도하고, 안 되거나 너무 느리면 `llama-server`의 GGUF로 바꾼다(기획서 v1.27).
 2. Redis 결과 캐시 — 무엇을 캐시할지는 여전히 열려 있습니다. 재분석은 "새로 쌓는다"로 확정됐으므로(v1.25) **AI 호출 단계만 입력 해시로 캐시**하는 BE 제안이 유효합니다 (`docs/04` 묶음 3).
 3. 개인정보 암호화 범위(BE-17). 계약 테스트 CI(BE-16)는 작업 A에서 구현 완료.
-4. C-03 공용 계약 PR 검토 후 FE 연결. 동의·CSRF와 S09의 content→citations·리포트 연결 규칙은 `docs/08`에 정리했다. 검색 후보 배분·가중치(D-12)는 아직 합의 전이다.
+4. **C-03 공용 계약 PR([SPEC #47](https://github.com/nerd-nam/SPEC-nerdnam/pull/47)) 검토 결과 반영** 후 FE 연결. 검토에서 계약이 바뀌면 **구현을 고친 뒤 `./gradlew exportWebApiContract`** 로 다시 내보내고 SPEC 복사본도 맞춘다(손으로 고치면 `WebApiContractTest` 가 실패한다). 동의·CSRF와 S09의 content→citations·리포트 연결 규칙은 `docs/08`. 검색 후보 배분·가중치(D-12)는 아직 합의 전이다.
 
 → 계약 테스트·AI 연결·캐시의 **구체적인 작업 지시서는 [`docs/07-다음-작업-지시서.md`](docs/07-다음-작업-지시서.md)** 에 있습니다 (단계·함정·완료 기준·검증 방법). 다른 에이전트나 사람이 이어서 할 때 그 문서만 읽으면 시작할 수 있게 썼습니다.
 

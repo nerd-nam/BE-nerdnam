@@ -1,6 +1,8 @@
 # 08. 웹 API 계약 (C-03 v0.1.0)
 
-기준은 기획서 v1.31이다. [계약 파일](../contracts/web-api.openapi.yaml)은 실제 컨트롤러의 55개 작업을 포함한다. 공용 계약은 SPEC PR에서 검토하고, 합의 후 SPEC의 `contracts/web-api.openapi.yaml`을 기준으로 FE 클라이언트를 만든다.
+기준은 기획서 v1.32다. [계약 파일](../contracts/web-api.openapi.yaml)은 실제 컨트롤러의 40개 경로·55개 작업을 포함한다.
+
+**공용 계약 검토 중: [SPEC PR #47](https://github.com/nerd-nam/SPEC-nerdnam/pull/47)** (2026-10-23 올림). 이 PR 에 C-03 파일과 C-02 화면별 API 목록의 엔드포인트·공통 결정(인증·오류 형식·AI 작업 폴링·S01 동의 순서·S08 분석 기록과 삭제·재등록 중 근거·S09 `content` 연결·다시 만들기 피드백·S04 재구성 중 삭제)이 함께 들어 있다. 세 팀 검토 대상이라 임의로 머지하지 않는다. 합의되면 SPEC 의 `contracts/web-api.openapi.yaml` 을 기준으로 FE 클라이언트를 만든다.
 
 ## 계약 갱신과 테스트
 
