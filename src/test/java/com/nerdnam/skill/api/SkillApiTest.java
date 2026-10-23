@@ -19,7 +19,7 @@ class SkillApiTest extends ApiTestSupport {
         mvc.perform(get("/api/skills").param("query", "k8s"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Kubernetes"))
-                .andExpect(jsonPath("$[0].category").value("INFRA"));
+                .andExpect(jsonPath("$[0].category").value("infra"));
     }
 
     @Test
@@ -34,7 +34,7 @@ class SkillApiTest extends ApiTestSupport {
     void 카테고리로_거른다() throws Exception {
         mvc.perform(get("/api/skills").param("query", "re").param("category", "DATABASE"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].category", everyItem(is("DATABASE"))))
+                .andExpect(jsonPath("$[*].category", everyItem(is("database"))))
                 .andExpect(jsonPath("$[*].name", hasItem("Redis")));
     }
 

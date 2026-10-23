@@ -67,7 +67,11 @@ public class WritingGuideService {
         this.readTx.setReadOnly(true);
     }
 
-    /** 탭 만들기 / "이 탭 다시 만들기" (피드백 선택). 공고의 가장 최근 분석이 완료돼 있어야 한다 */
+    /**
+     * 탭 만들기 / "이 탭 다시 만들기". 공고의 가장 최근 분석이 완료돼 있어야 한다.
+     * <b>처음 만들 때는 피드백이 없어도 되고, 다시 만들 때는 필수다</b> (C-02 S09 4, 기획서 v1.12 와 같은 규칙).
+     * 같은 조건으로 다시 만드는 요청은 GPU 를 같이 먹고 결과도 거의 같다.
+     */
     public Long generate(Long memberId, Long postingId, GuideTab tab, String feedback) {
         AtomicReference<Long> guideId = new AtomicReference<>();
         AtomicReference<Set<Long>> allowed = new AtomicReference<>();
@@ -77,6 +81,9 @@ public class WritingGuideService {
                     FitReportView report = completedReport(memberId, postingId);
                     JobPostingView posting = postings.get(memberId, postingId);
                     int next = guides.maxGenerationNo(report.analysisId(), tab) + 1;
+                    if (next > 1 && (feedback == null || feedback.isBlank())) {
+                        throw new BusinessException(ErrorCode.INVALID_INPUT, "어떤 방향으로 다시 만들지 알려 주세요.");
+                    }
                     WritingGuide guide = guides.saveAndFlush(WritingGuide.start(report.analysisId(), tab, next, feedback));
                     guideId.set(guide.getId());
                     allowed.set(allowedChunkIds(report));
@@ -94,8 +101,9 @@ public class WritingGuideService {
                         guides.findById(guideId.get()).ifPresent(WritingGuide::fail);
                     }
                 });
-        return aiJobs.start(new JobRequest(memberId, JobType.WRITING_GUIDE, tab.name(), TargetType.FIT_ANALYSIS,
-                analysis, tab.name()), work);
+        // 작업의 mode·lock_scope 는 탭의 표준 이름(motive 등) — 웹 주소·AI 계약과 같은 값 (기획서 v1.20)
+        return aiJobs.start(new JobRequest(memberId, JobType.WRITING_GUIDE, tab.path(), TargetType.FIT_ANALYSIS,
+                analysis, tab.path()), work);
     }
 
     public Overview overview(Long memberId, Long postingId) {

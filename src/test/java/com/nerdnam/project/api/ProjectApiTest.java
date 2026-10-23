@@ -33,19 +33,19 @@ class ProjectApiTest extends ApiTestSupport {
                 .andExpect(status().isAccepted()), "$.jobId");
 
         getJson(member, "/api/ai-jobs/{id}", jobId)
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.jobType").value("RESTRUCTURE"))
-                .andExpect(jsonPath("$.mode").value("SPLIT"))
+                .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.jobType").value("restructure"))
+                .andExpect(jsonPath("$.mode").value("split"))
                 .andExpect(jsonPath("$.resultId").value(project));
 
         ResultActions review = getJson(member, "/api/projects/{id}/review", project)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("REVIEW"))
+                .andExpect(jsonPath("$.status").value("review"))
                 .andExpect(jsonPath("$.splitRound").value(1))
                 .andExpect(jsonPath("$.episodes", hasSize(2)))
                 .andExpect(jsonPath("$.episodes[0].skills[0]").value("Spring Boot"))
                 .andExpect(jsonPath("$.episodes[0].sourceSpans[0][0]").value(0))
-                .andExpect(jsonPath("$.episodes[0].versions[0].changeType").value("AI_SPLIT"))
+                .andExpect(jsonPath("$.episodes[0].versions[0].changeType").value("ai_split"))
                 .andExpect(jsonPath("$.episodes[1].clarifications[0].key").value("result-metric"))
                 .andExpect(jsonPath("$.runningJobId").doesNotExist());
         Long first = readLong(review, "$.episodes[0].id");
@@ -78,8 +78,8 @@ class ProjectApiTest extends ApiTestSupport {
         // 확정하면 읽기 모드: 확정한 사례만 보이고 제외한 사례는 빠진다 (기획서 v1.17)
         postJson(member, null, "/api/projects/{id}/confirm", project)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CONFIRMED"))
-                .andExpect(jsonPath("$.episodes[*].status", contains("CONFIRMED")));
+                .andExpect(jsonPath("$.status").value("confirmed"))
+                .andExpect(jsonPath("$.episodes[*].status", contains("confirmed")));
         assertThat(episodeStatuses(project)).containsExactlyInAnyOrder("CONFIRMED", "EXCLUDED");
 
         Integer calls = jdbc.sql("""
@@ -109,7 +109,7 @@ class ProjectApiTest extends ApiTestSupport {
         getJson(member, "/api/projects/{id}/review", project)
                 .andExpect(jsonPath("$.splitRound").value(2))
                 .andExpect(jsonPath("$.episodes", hasSize(1)))
-                .andExpect(jsonPath("$.episodes[0].status").value("REVIEW"))
+                .andExpect(jsonPath("$.episodes[0].status").value("review"))
                 .andExpect(jsonPath("$.episodes[0].versions[0].feedback").value("두 사례를 합쳐 줘"));
         assertThat(episodeStatuses(project)).containsExactlyInAnyOrder("SUPERSEDED", "SUPERSEDED", "REVIEW");
     }
@@ -123,7 +123,7 @@ class ProjectApiTest extends ApiTestSupport {
         postJson(member, null, "/api/projects/{id}/episodes/{e}/clarifications/{key}/drop", project, second, "result-metric")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.episodes[1].clarifications", hasSize(0)))
-                .andExpect(jsonPath("$.episodes[1].versions[1].changeType").value("USER_EDIT"));
+                .andExpect(jsonPath("$.episodes[1].versions[1].changeType").value("user_edit"));
 
         putJson(member, """
                 {"title": "부하 테스트 절차 도입", "role": "절차 설계", "problem": "문제", "solution": "해결", "result": "결과"}
@@ -137,7 +137,7 @@ class ProjectApiTest extends ApiTestSupport {
                 """, "/api/projects/{id}/episodes/{e}/restore", project, second)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.episodes[1].currentVersion").value(4))
-                .andExpect(jsonPath("$.episodes[1].versions[3].changeType").value("RESTORED"))
+                .andExpect(jsonPath("$.episodes[1].versions[3].changeType").value("restored"))
                 .andExpect(jsonPath("$.episodes[1].versions[3].restoredFrom").value(1))
                 .andExpect(jsonPath("$.episodes[1].clarifications", hasSize(1)));
 
@@ -146,8 +146,8 @@ class ProjectApiTest extends ApiTestSupport {
                 """, "/api/projects/{id}/episodes", project)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.episodes", hasSize(3)))
-                .andExpect(jsonPath("$.episodes[2].origin").value("USER"))
-                .andExpect(jsonPath("$.episodes[2].versions[0].changeType").value("USER_CREATED"));
+                .andExpect(jsonPath("$.episodes[2].origin").value("user"))
+                .andExpect(jsonPath("$.episodes[2].versions[0].changeType").value("user_created"));
     }
 
     @Test
@@ -162,7 +162,7 @@ class ProjectApiTest extends ApiTestSupport {
 
         ResultActions discarded = postJson(member, null, "/api/projects/{id}/review/discard", project)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DRAFT"));
+                .andExpect(jsonPath("$.status").value("draft"));
         long version = readLong(discarded, "$.version");
 
         putJson(member, draftBody("고친 원문", version), "/api/projects/{id}", project)
@@ -178,7 +178,7 @@ class ProjectApiTest extends ApiTestSupport {
 
         postJson(member, null, "/api/projects/{id}/reopen", project)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.status").value("draft"))
                 .andExpect(jsonPath("$.reregistering").value(true))
                 .andExpect(jsonPath("$.rawText").value(RAW_TEXT));
         getJson(member, "/api/projects", project)
@@ -216,7 +216,7 @@ class ProjectApiTest extends ApiTestSupport {
         // 확정한 사례만, 원문 하이라이트는 그대로 (웹은 #사례id 로 그 사례를 펼친다)
         getJson(member, "/api/projects/{id}/review", project)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.status").value("confirmed"))
                 .andExpect(jsonPath("$.reregistering").value(false))
                 .andExpect(jsonPath("$.episodes", hasSize(1)))
                 .andExpect(jsonPath("$.episodes[0].id").value(confirmed))
@@ -245,7 +245,7 @@ class ProjectApiTest extends ApiTestSupport {
         // 나갈 때 경고가 없으므로 "검토 결과 버리기"를 불러도 확정은 그대로다
         postJson(member, null, "/api/projects/{id}/review/discard", project)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+                .andExpect(jsonPath("$.status").value("confirmed"));
 
         // 사례 생성 평가는 확정 뒤에도 보고 바꿀 수 있다
         getJson(member, "/api/projects/{id}/rating", project).andExpect(status().isNoContent());
@@ -283,9 +283,9 @@ class ProjectApiTest extends ApiTestSupport {
         Long jobId = readLong(postJson(member, null, "/api/projects/{id}/split", project), "$.jobId");
 
         getJson(member, "/api/ai-jobs/{id}", jobId)
-                .andExpect(jsonPath("$.status").value("FAILED"))
-                .andExpect(jsonPath("$.failureCode").value("AI_ERROR"));
-        getJson(member, "/api/projects/{id}", project).andExpect(jsonPath("$.status").value("DRAFT"));
+                .andExpect(jsonPath("$.status").value("failed"))
+                .andExpect(jsonPath("$.failureCode").value("ai_error"));
+        getJson(member, "/api/projects/{id}", project).andExpect(jsonPath("$.status").value("draft"));
     }
 
     @Test
@@ -351,7 +351,7 @@ class ProjectApiTest extends ApiTestSupport {
                 {"name": "%s", "category": "TOOL"}
                 """.formatted(name), "/api/projects/{id}/skills", project)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.proficiency").value("LEARNING")), "$.id");
+                .andExpect(jsonPath("$.proficiency").value("learning")), "$.id");
 
         getJson(member, "/api/projects/{id}", project)
                 .andExpect(jsonPath("$.skills[?(@.name == '%s')].userSkillId".formatted(name)).value(userSkillId.intValue()));
@@ -368,7 +368,7 @@ class ProjectApiTest extends ApiTestSupport {
                  "links": ["https://github.com/me/pay", " "]}
                 """.formatted(quote(rawText), springBoot, redis), "/api/projects")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.status").value("draft"))
                 .andExpect(jsonPath("$.links", hasSize(1)))
                 .andExpect(jsonPath("$.periodStart").value("2024-05"))
                 .andExpect(jsonPath("$.version").value(0)), "$.id");

@@ -14,6 +14,7 @@ import com.nerdnam.matching.domain.FitAnalysis;
 import com.nerdnam.matching.domain.FitAnalysisRepository;
 import com.nerdnam.matching.domain.FitReport;
 import com.nerdnam.matching.domain.MatchEvidence;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,23 @@ public class FitReportQuery {
         return view(analysis, posting);
     }
 
+    /**
+     * 분석 기록 (S08 "이전 분석 보기", 기획서 v1.25). 공고를 고쳐 다시 분석하면 덮어쓰지 않고 새로 쌓으므로,
+     * 웹이 목록에서 골라 {@code GET /api/fit-analyses/{id}} 로 그 분석을 본다. 최신순.
+     */
+    public List<AnalysisSummary> history(Long memberId, Long postingId) {
+        postings.get(memberId, postingId);   // 소유권 확인
+        return analyses.findAllByJobPostingIdAndMemberIdOrderByRequestedAtDescIdDesc(postingId, memberId).stream()
+                .map(a -> new AnalysisSummary(a.getId(), a.getStatus(), a.getFailureCode(), a.getRequestedAt(),
+                        a.getCompletedAt()))
+                .toList();
+    }
+
+    /** 분석 하나의 요약 (목록용). 내용은 리포트 조회로 받는다 */
+    public record AnalysisSummary(Long analysisId, AnalysisStatus status, String failureCode, Instant requestedAt,
+                                  Instant completedAt) {
+    }
+
     public FitReportView get(Long memberId, Long analysisId) {
         FitAnalysis analysis = analyses.findByIdAndMemberId(analysisId, memberId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "분석 결과를 찾을 수 없어요."));
@@ -61,7 +79,7 @@ public class FitReportQuery {
         FitReport report = a.report();
         Map<Long, Long> episodeProjects = episodeProjects(a);
         List<MatchView> matches = a.getMatches().stream()
-                .map(m -> new MatchView(m.getId(), m.getRequirementId(), m.getRequirementType(), m.getRequirementText(),
+                .map(m -> new MatchView(m.getId(), m.getRequirementId(), lower(m.getRequirementType()), m.getRequirementText(),
                         m.getSkills(), m.getMinYears(), m.getRuleVerdict(), m.getLlmVerdict(), m.getFinalVerdict(),
                         m.getReason(), m.getEvidences().stream().map(e -> evidence(e, episodeProjects)).toList(),
                         m.gapGuide()))
@@ -69,6 +87,11 @@ public class FitReportQuery {
         return new FitReportView(a.getId(), posting.id(), posting.companyName(), posting.positionName(), a.getStatus(),
                 a.getFailureCode(), a.getRequestedAt(), a.getCompletedAt(), report.required(), report.preferred(),
                 report.diagnosis(), matches, running);
+    }
+
+    /** 응답 JSON 의 값은 소문자 (D-10). 요건 유형은 문자열로 저장돼 있어 여기서 낮춘다 */
+    private static String lower(String value) {
+        return value == null ? null : value.toLowerCase(java.util.Locale.ROOT);
     }
 
     private static EvidenceView evidence(MatchEvidence e, Map<Long, Long> episodeProjects) {

@@ -30,14 +30,14 @@ class FitAnalysisApiTest extends ApiTestSupport {
         Long jobId = readLong(postJson(member, null, "/api/job-postings/{id}/analyses", posting)
                 .andExpect(status().isAccepted()), "$.jobId");
         Long analysisId = readLong(getJson(member, "/api/ai-jobs/{id}", jobId)
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.jobType").value("FIT_ANALYSIS")), "$.resultId");
+                .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.jobType").value("fit_analysis")), "$.resultId");
 
         getJson(member, "/api/job-postings/{id}/report", posting)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.analysisId").value(analysisId))
                 .andExpect(jsonPath("$.companyName").value("OO페이"))
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.status").value("completed"))
                 .andExpect(jsonPath("$.required.met").value(2))
                 .andExpect(jsonPath("$.required.total").value(2))
                 .andExpect(jsonPath("$.preferred.partial").value(1))
@@ -47,19 +47,19 @@ class FitAnalysisApiTest extends ApiTestSupport {
                 // 1: Spring Boot 3년 — 경력 36개월이라 규칙도 충족
                 .andExpect(jsonPath("$.matches[0].skills[0]").value("Spring Boot"))
                 .andExpect(jsonPath("$.matches[0].minYears").value(3))
-                .andExpect(jsonPath("$.matches[0].ruleVerdict").value("MET"))
-                .andExpect(jsonPath("$.matches[0].verdict").value("MET"))
+                .andExpect(jsonPath("$.matches[0].ruleVerdict").value("met"))
+                .andExpect(jsonPath("$.matches[0].verdict").value("met"))
                 .andExpect(jsonPath("$.matches[0].reason", containsString("관련 경력 3년 / 요구 3년")))
                 .andExpect(jsonPath("$.matches[0].gapGuide").doesNotExist())
                 .andExpect(jsonPath("$.matches[1].evidences[0].label").exists())
                 // 3: Kubernetes — 근거 없음 → 미충족 + AI 갭 가이드
-                .andExpect(jsonPath("$.matches[2].type").value("PREFERRED"))
-                .andExpect(jsonPath("$.matches[2].verdict").value("UNMET"))
+                .andExpect(jsonPath("$.matches[2].type").value("preferred"))
+                .andExpect(jsonPath("$.matches[2].verdict").value("unmet"))
                 .andExpect(jsonPath("$.matches[2].evidences", hasSize(0)))
-                .andExpect(jsonPath("$.matches[2].gapGuide.source").value("AI"))
+                .andExpect(jsonPath("$.matches[2].gapGuide.source").value("ai"))
                 .andExpect(jsonPath("$.matches[2].gapGuide.avoid").exists())
                 // 4: 기술명 없는 요건 → 부분 충족
-                .andExpect(jsonPath("$.matches[3].verdict").value("PARTIAL"))
+                .andExpect(jsonPath("$.matches[3].verdict").value("partial"))
                 .andExpect(jsonPath("$.matches[3].gapGuide.advice").exists());
 
         // 근거 청크는 모두 이 회원의 것 (5.4-6)
@@ -88,11 +88,11 @@ class FitAnalysisApiTest extends ApiTestSupport {
         postJson(member, null, "/api/job-postings/{id}/analyses", posting).andExpect(status().isAccepted());
 
         getJson(member, "/api/job-postings/{id}/report", posting)
-                .andExpect(jsonPath("$.matches[0].llmVerdict").value("MET"))
-                .andExpect(jsonPath("$.matches[0].ruleVerdict").value("PARTIAL"))
-                .andExpect(jsonPath("$.matches[0].verdict").value("PARTIAL"))
+                .andExpect(jsonPath("$.matches[0].llmVerdict").value("met"))
+                .andExpect(jsonPath("$.matches[0].ruleVerdict").value("partial"))
+                .andExpect(jsonPath("$.matches[0].verdict").value("partial"))
                 .andExpect(jsonPath("$.matches[0].reason", containsString("관련 경력 2년 / 요구 3년")))
-                .andExpect(jsonPath("$.matches[0].gapGuide.source").value("AI"))
+                .andExpect(jsonPath("$.matches[0].gapGuide.source").value("ai"))
                 .andExpect(jsonPath("$.diagnosis").value("필수 1개 중 1개는 부분 충족이에요."));
     }
 
@@ -106,7 +106,7 @@ class FitAnalysisApiTest extends ApiTestSupport {
         postJson(member, null, "/api/job-postings/{id}/analyses", posting)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("고쳐야 할 항목이 3개 있어요. 빨간색으로 표시된 곳을 확인해 주세요."))
-                .andExpect(jsonPath("$.violations[0].code").value("COMPANY_NAME_REQUIRED"))
+                .andExpect(jsonPath("$.violations[0].code").value("company_name_required"))
                 .andExpect(jsonPath("$.violations[0].message").value("회사명을 입력해 주세요."))
                 .andExpect(jsonPath("$.violations[2].field").value("preferred"))
                 .andExpect(jsonPath("$.violations[2].index").value(0));
@@ -155,6 +155,14 @@ class FitAnalysisApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.matches[0].text").value("Kafka 운영 경험"));
         getJson(member, "/api/fit-analyses/{id}", first)
                 .andExpect(jsonPath("$.matches[0].text").value("Redis 경험"));
+
+        // 분석 기록: 최신순으로 쌓인다 (S08 "이전 분석 보기", 기획서 v1.25)
+        getJson(member, "/api/job-postings/{id}/analyses", posting)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].status").value("completed"))
+                .andExpect(jsonPath("$[1].analysisId").value(first))
+                .andExpect(jsonPath("$[0].requestedAt").exists());
     }
 
     @Test

@@ -46,7 +46,7 @@ public class LibraryController {
     }
 
     /**
-     * 온보딩 진행 상태. nextStep 은 로그인 직후 보낼 화면: SKILLS → CAREER(건너뛸 수 있음) → PROJECT → LIBRARY.
+     * 온보딩 진행 상태. nextStep 은 로그인 직후 보낼 화면: skills → career(건너뛸 수 있음) → project → library (값은 소문자, D-10).
      * reviewingProjectId 가 있으면 S02·S03 에 "검토로 돌아가기"를 보여주고, S04 에 들어갈 때 경고한다.
      */
     public record Onboarding(Stats stats, Long reviewingProjectId, String nextStep) {
@@ -76,13 +76,13 @@ public class LibraryController {
                 .orElse(null);
         String next;
         if (stats.skillCount() == 0) {
-            next = "SKILLS";
+            next = "skills";
         } else if (stats.careerCount() == 0 && stats.projectCount() == 0) {
-            next = "CAREER";
+            next = "career";
         } else if (stats.confirmedProjectCount() == 0) {
-            next = "PROJECT";
+            next = "project";
         } else {
-            next = "LIBRARY";
+            next = "library";
         }
         return new Onboarding(stats, reviewing, next);
     }

@@ -27,24 +27,24 @@ class MeApiTest extends ApiTestSupport {
     @Test
     void 온보딩_진행_상태는_다음에_갈_화면과_검토_중인_프로젝트를_알려준다() throws Exception {
         Long member = newMember();
-        getJson(member, "/api/me/onboarding").andExpect(jsonPath("$.nextStep").value("SKILLS"));
+        getJson(member, "/api/me/onboarding").andExpect(jsonPath("$.nextStep").value("skills"));
 
         Long redis = addSkill(member, "Redis");
-        getJson(member, "/api/me/onboarding").andExpect(jsonPath("$.nextStep").value("CAREER"));
+        getJson(member, "/api/me/onboarding").andExpect(jsonPath("$.nextStep").value("career"));
 
         Long project = readLong(postJson(member, """
                 {"title": "결제", "rawText": "응답이 1.2초였다. Redis 캐시를 붙였다. 0.3초가 됐다.", "userSkillIds": [%d]}
                 """.formatted(redis), "/api/projects"), "$.id");
         postJson(member, null, "/api/projects/{id}/split", project);
         getJson(member, "/api/me/onboarding")
-                .andExpect(jsonPath("$.nextStep").value("PROJECT"))
+                .andExpect(jsonPath("$.nextStep").value("project"))
                 .andExpect(jsonPath("$.reviewingProjectId").value(project));
 
         Long episode = readLong(getJson(member, "/api/projects/{id}/review", project), "$.episodes[0].id");
         postJson(member, null, "/api/projects/{id}/episodes/{e}/confirm", project, episode);
         postJson(member, null, "/api/projects/{id}/confirm", project);
         getJson(member, "/api/me/onboarding")
-                .andExpect(jsonPath("$.nextStep").value("LIBRARY"))
+                .andExpect(jsonPath("$.nextStep").value("library"))
                 .andExpect(jsonPath("$.reviewingProjectId").doesNotExist())
                 .andExpect(jsonPath("$.stats.confirmedEpisodeCount").value(1));
     }

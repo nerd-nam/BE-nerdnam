@@ -29,7 +29,7 @@ class UserSkillApiTest extends ApiTestSupport {
                 """)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("React"))
-                .andExpect(jsonPath("$.category").value("FRAMEWORK"))
+                .andExpect(jsonPath("$.category").value("framework"))
                 .andExpect(jsonPath("$.level").value(1))
                 .andExpect(jsonPath("$.levelName").value("학습 중"));
     }
@@ -123,7 +123,7 @@ class UserSkillApiTest extends ApiTestSupport {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("IN_USE"))
                 .andExpect(jsonPath("$.detail").value("OO커머스 경력에서 사용 중이라 삭제할 수 없어요."))
-                .andExpect(jsonPath("$.usages[0].type").value("CAREER"))
+                .andExpect(jsonPath("$.usages[0].type").value("career"))
                 .andExpect(jsonPath("$.usages[0].name").value("OO커머스"));
     }
 
@@ -139,7 +139,7 @@ class UserSkillApiTest extends ApiTestSupport {
 
         mvc.perform(delete("/api/me/skills/{id}", skillId).header(MEMBER_HEADER, member))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.usages[0].type").value("PROJECT"))
+                .andExpect(jsonPath("$.usages[0].type").value("project"))
                 .andExpect(jsonPath("$.usages[0].id").value(projectId));
     }
 

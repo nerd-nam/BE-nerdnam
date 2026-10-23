@@ -27,16 +27,20 @@ class WritingGuideApiTest extends ApiTestSupport {
         Long jobId = readLong(postJson(member, null, "/api/job-postings/{id}/guides/motive", posting)
                 .andExpect(status().isAccepted()), "$.jobId");
         getJson(member, "/api/ai-jobs/{id}", jobId)
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.lockScope").value("MOTIVATION"));
+                .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.lockScope").value("motive"));   // 탭의 표준 이름 (웹 주소·AI 계약과 같은 값)
 
         getJson(member, "/api/job-postings/{id}/guides/motive", posting)
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.status").value("completed"))
                 .andExpect(jsonPath("$.generationNo").value(1))
                 .andExpect(jsonPath("$.content.core_message").value("OO페이 백엔드 개발자에 맞춘 핵심 메시지"))
                 .andExpect(jsonPath("$.citations", not(empty())))
                 .andExpect(jsonPath("$.citations[0].label").exists());
 
+        // 다시 만들기는 피드백이 필수다 (C-02 S09 4 — 같은 조건으로 다시 만드는 요청을 막는다)
+        postJson(member, null, "/api/job-postings/{id}/guides/motive", posting)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("어떤 방향으로 다시 만들지 알려 주세요."));
         postJson(member, """
                 {"feedback": "더 짧게"}
                 """, "/api/job-postings/{id}/guides/motive", posting).andExpect(status().isAccepted());
@@ -45,7 +49,7 @@ class WritingGuideApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.feedback").value("더 짧게"))
                 .andExpect(jsonPath("$.content.feedback_applied").value("더 짧게"));
         getJson(member, "/api/job-postings/{id}/guides", posting)
-                .andExpect(jsonPath("$.tabs[0].status").value("COMPLETED"))
+                .andExpect(jsonPath("$.tabs[0].status").value("completed"))
                 .andExpect(jsonPath("$.tabs[0].generationNo").value(2));
     }
 
@@ -100,7 +104,7 @@ class WritingGuideApiTest extends ApiTestSupport {
         putJson(member, """
                 {"score": 2, "comment": "사례가 너무 잘게 나뉘었어요"}
                 """, "/api/projects/{id}/rating", project)
-                .andExpect(jsonPath("$.targetType").value("EPISODE_GENERATION"));
+                .andExpect(jsonPath("$.targetType").value("episode_generation"));
     }
 
     /** Redis 를 쓴 확정 프로젝트가 있는 회원의 분석 완료 공고 */

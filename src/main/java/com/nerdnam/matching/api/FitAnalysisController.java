@@ -51,6 +51,12 @@ public class FitAnalysisController {
         return reports.latest(memberId, postingId);
     }
 
+    /** 분석 기록 — 이 공고를 분석한 내역 (최신순). 웹은 여기서 고른 분석을 아래 조회로 본다 */
+    @GetMapping("/api/job-postings/{postingId}/analyses")
+    public List<FitReportQuery.AnalysisSummary> history(@CurrentMemberId Long memberId, @PathVariable Long postingId) {
+        return reports.history(memberId, postingId);
+    }
+
     @GetMapping("/api/fit-analyses/{analysisId}")
     public FitReportView get(@CurrentMemberId Long memberId, @PathVariable Long analysisId) {
         return reports.get(memberId, analysisId);

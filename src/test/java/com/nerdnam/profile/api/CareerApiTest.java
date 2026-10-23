@@ -107,7 +107,7 @@ class CareerApiTest extends ApiTestSupport {
 
         mvc.perform(delete("/api/me/careers/{id}", careerId).header(MEMBER_HEADER, member))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.usages[0].type").value("PROJECT"))
+                .andExpect(jsonPath("$.usages[0].type").value("project"))
                 .andExpect(jsonPath("$.usages[0].id").value(projectId));
     }
 
