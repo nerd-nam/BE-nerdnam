@@ -15,6 +15,18 @@ spring:
         jdbc:
           time_zone: UTC
 
+  data:
+    redis:                      # 세션 저장소·결과 캐시 (기획서 5.3). 로컬은 compose.yaml 의 컨테이너
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s               # 명령 하나의 제한 시간. Redis 가 느려도 요청이 매달리지 않게 짧게
+  session:                      # 세션을 서버 메모리에 두면 재시작·서버 2대에서 로그인이 풀린다.
+    timeout: 7d                 # 저장소는 클래스패스로 정해진다 (spring-boot-starter-session-data-redis)
+    data:                       # 쿠키는 브라우저를 닫으면 사라진다 (기본값 — 세션 쿠키)
+      redis:
+        namespace: nerdnam:session   # 키는 nerdnam:session:sessions:{세션 id}
+        repository-type: default     # 키스페이스 알림을 구독하지 않는 방식. indexed 는 Redis 설정이 더 필요하다
+
   security:
     oauth2:
       client:

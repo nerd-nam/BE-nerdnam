@@ -23,6 +23,7 @@ docker compose up -d     # PostgreSQL(pgvector) + Redis
 | 언어·런타임 | Java 21 |
 | 프레임워크 | Spring Boot 4.1.1 (Web MVC, Validation, Actuator, Security + OAuth2 Client) |
 | 데이터 | Spring Data JPA (Hibernate 7), Flyway, PostgreSQL 17 + pgvector |
+| 세션·캐시 | Redis 7 (Spring Session — 세션 저장소. 결과 캐시는 아직) |
 | 빌드 | Gradle 9.8.1 (Kotlin DSL) |
 | 테스트 | JUnit 5, AssertJ, Mockito, Testcontainers 2, Spring Security Test |
 
@@ -30,7 +31,7 @@ docker compose up -d     # PostgreSQL(pgvector) + Redis
 
 | 방식 | 언제 | 어떻게 |
 | --- | --- | --- |
-| 소셜 로그인 쿠키 세션 (기본) | 배포·통합 | 웹이 `/oauth2/authorization/google`(또는 `kakao`)로 이동 → 성공하면 `nerdnam.auth.login-success-url`. 상태를 바꾸는 요청은 쿠키 `XSRF-TOKEN` 값을 헤더 `X-XSRF-TOKEN`으로. 로그아웃 `POST /api/auth/logout` |
+| 소셜 로그인 쿠키 세션 (기본) | 배포·통합 | 웹이 `/oauth2/authorization/google`(또는 `kakao`)로 이동 → 성공하면 `nerdnam.auth.login-success-url`. 상태를 바꾸는 요청은 쿠키 `XSRF-TOKEN` 값을 헤더 `X-XSRF-TOKEN`으로. 로그아웃 `POST /api/auth/logout`. **세션은 Redis 에 저장**(7일, 키 `nerdnam:session:sessions:{id}`)해서 앱을 재시작해도 로그인이 유지된다 |
 | `X-Member-Id` 헤더 | local 프로필만 | 로그인 없이 회원을 고른다. 로컬 DB 에 1번 회원이 있다. local 이 아니면 앱이 뜨지 않는다 |
 
 ## API

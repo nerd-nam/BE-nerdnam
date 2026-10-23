@@ -32,6 +32,10 @@ dependencies {
     // 로그인: Spring Security + OAuth2 소셜 로그인(Google·카카오), 쿠키 세션 (BE-03)
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
 
+    // 세션 저장소·결과 캐시: Redis (기획서 5.3). 세션을 서버 메모리에 두면 재시작·서버 2대에서 로그인이 풀린다
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-session-data-redis")
+
     // DB: JPA(Hibernate) + Flyway + PostgreSQL
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-flyway")
