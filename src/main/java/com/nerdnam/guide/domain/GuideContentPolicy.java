@@ -13,7 +13,8 @@ import java.util.Set;
  * <ul>
  *   <li><b>인용 출처 소유권</b> (기획서 5.4-6): 인용한 청크 id 는 이 분석의 근거·갭 가이드 인용 안의 것만 남긴다.
  *       내용 안 어디에 있든 {@code sources} 목록의 숫자도 같은 기준으로 거른다.</li>
- *   <li><b>포트폴리오 페이지</b> (BE-14): {@code pages}를 order 순으로 정렬하고 kind 가 cover·text·diagram·chart 가 아니면 text 로.</li>
+ *   <li><b>포트폴리오 페이지</b> (BE-14): {@code pages}를 order 순으로 정렬하고 kind 가 cover·text·diagram·chart 가 아니면 text 로.
+ *       시각자료({@code visual})는 만들지 않는다 — 차트·도식은 서비스가 만들지 않고 안내만 준다 (D-1 결정, 2026-10-23).</li>
  * </ul>
  */
 public final class GuideContentPolicy {
