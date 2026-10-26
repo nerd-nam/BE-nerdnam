@@ -12,11 +12,21 @@ public final class GapGuideCall {
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Request(List<Requirement> requirements, List<String> tasks) {
+
+        /** 계약에 기본값이 있는 필드는 null 로 보내지 않는다 ({@link AiEpisode} 설명) */
+        public Request {
+            tasks = tasks == null ? List.of() : tasks;
+        }
     }
 
     /** @param adjacent 뽑히지 못한 후보 청크 (인접 경험) */
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Requirement(Long id, String type, String text, String verdict, List<MatchCall.Candidate> adjacent) {
+
+        /** 계약에 기본값이 있는 필드는 null 로 보내지 않는다 ({@link AiEpisode} 설명) */
+        public Requirement {
+            adjacent = adjacent == null ? List.of() : adjacent;
+        }
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

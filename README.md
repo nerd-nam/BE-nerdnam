@@ -3,18 +3,31 @@
 nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의 `nerdnam-api`에 해당합니다.
 인증, 도메인 로직, 데이터 저장(PostgreSQL + pgvector), AI 서버 호출 조율을 맡습니다.
 
-- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.31, `작업목록.md`, ADR
-- 계약: **C-04 `contracts-v0.3.0`** 을 따르고 [AI 계약 테스트](docs/06-AI-계약-초안.md)로 대조한다. **C-03 v0.1.2** 는 [웹 계약 파일](contracts/web-api.openapi.yaml)과 [연결 안내](docs/08-웹-API-계약.md)에 있다 (SPEC PR #47 로 머지).
+- 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.41 (로컬 `bbb835d` 기준, 원격 최신 여부 미확인), `작업목록.md`, ADR
+- 계약: **C-04 `contracts-v0.3.0`** 을 따르고 [AI 계약 테스트](docs/06-AI-계약-초안.md)로 대조한다. **C-03 v0.1.3** 는 [웹 계약 파일](contracts/web-api.openapi.yaml)과 [연결 안내](docs/08-웹-API-계약.md)에 있다 (SPEC PR #47 로 머지).
+
+현재 구현 범위와 남은 작업은 [백엔드 현황](docs/09-최신-SPEC와-백엔드-현황.md)을 보세요. 통합 브랜치에서 전체 테스트 275개를 통과했으며, 실제 AI·웹 연결과 보안·캐시는 후속 작업입니다.
 
 ## 빠른 시작
 
+Docker와 Docker Compose만 있으면 됩니다. Java·Gradle은 이미지 안에서 실행합니다.
+
 ```bash
-docker compose up -d     # PostgreSQL(pgvector) + Redis
-./gradlew test           # 테스트 (Docker 필요. 없으면 NERDNAM_TEST_USE_LOCAL_DB=true → 05 문서)
-./gradlew bootRun        # http://localhost:8080/actuator/health
+docker compose up       # API(8080) + PostgreSQL(pgvector, 5432) + Redis(6379)
+# 다른 터미널에서
+curl http://localhost:8080/actuator/health   # {"status":"UP"}
 ```
 
-처음이라면 [05 로컬 환경 셋업](docs/05-로컬-환경-셋업.md)부터 보세요.
+첫 실행에는 이미지·의존성을 내려받아 빌드합니다. 기본값은 **세션 인증 + AI 스텁**입니다. AI 레포·GPU·소셜 로그인 키가 없어도 서버는 시작하지만, 실제 로그인에는 각 제공자의 키가 필요합니다.
+
+- 소셜 로그인: `.env.example`을 `.env`로 복사해 키를 입력한 뒤 `docker compose up -d`. **기존 `.env`는 덮어쓰지 마세요.** Compose가 `.env` 값을 API 컨테이너에 전달합니다.
+- FE: `API_ORIGIN=http://localhost:8080`. 로그인 전 `/api/me`의 401은 정상입니다.
+- 로그인 없이 API 테스트: `NERDNAM_AUTH_MODE=header docker compose up -d api` 후 `curl -H 'X-Member-Id: 1' http://localhost:8080/api/me`. FE 소셜 로그인은 `session` 모드를 사용합니다.
+- 코드 변경 반영: `docker compose up --build -d`. 환경변수 변경 반영: `docker compose up -d` (`restart`만으로는 새 값이 적용되지 않음).
+- 종료: `docker compose down`. DB 볼륨은 유지되고 Redis 세션은 컨테이너 재생성 시 사라집니다.
+- IntelliJ 개발: `docker compose stop api` 후 `docker compose up -d postgres redis`. 로컬 Java 21로 `./gradlew bootRun` 또는 IDE에서 실행합니다.
+
+소셜 콜백·포트 변경·호스트 AI 연결·문제 해결은 [11 Docker Compose 실행](docs/11-Docker-Compose-실행.md)을 보세요. IDE 개발 환경은 [05 로컬 환경 셋업](docs/05-로컬-환경-셋업.md)에 있습니다.
 
 ## 기술 구성
 
@@ -47,9 +60,9 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `GET /api/me` | 머리글 | 내 정보 + `consentRequired`(지금 약관에 동의 전) |
 | `POST /api/me/consents` | S01 | 이용약관·개인정보 수집 동의 기록 |
 | `DELETE /api/me` | 계정 메뉴 | 탈퇴 — 원본·벡터 즉시 삭제, 세션 종료 |
-| `GET /api/me/onboarding` | 공통 | 진행 상태 + `nextStep`(SKILLS/CAREER/PROJECT/LIBRARY) + `reviewingProjectId` |
+| `GET /api/me/onboarding` | 공통 | 진행 상태 + `nextStep`(skills/career/project/library) + `reviewingProjectId` |
 | `GET /api/me/library` | S06 | 통계·프로젝트 카드(확정 사례 한 줄 요약, `status`·`reregistering` 으로 상태별 카드)·경력·기술 한 번에 |
-| `GET /api/ai-jobs/{id}` | 공통 | AI 작업 상태 (`IN_PROGRESS/COMPLETED/FAILED`, `failureCode`, `resultId`) |
+| `GET /api/ai-jobs/{id}` | 공통 | AI 작업 상태 (`in_progress/completed/failed`, `failureCode`, `resultId`) |
 | **기술스택·경력** | | |
 | `GET /api/skills?query=&category=` | S02 | 표준 기술 사전 자동완성 (별칭 포함) |
 | `GET/POST /api/me/skills`, `PATCH/DELETE /api/me/skills/{id}` | S02 | 기술스택. 삭제는 쓰는 곳이 있으면 409 + `usages[]` |
@@ -60,7 +73,7 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `POST /api/projects/{id}/skills` | S04 | 기술스택에 없는 기술 추가 + 연결 (`{"name","category"}`) |
 | `POST /api/projects/{id}/review/discard` | S04·S05 | 확정 전 검토 결과 버리기 (여러 번 불러도 안전) |
 | `POST /api/projects/{id}/split` | S04 | 재구성하기 → 202 |
-| `GET /api/projects/{id}/review` | S05·S06 | 원문·답변·사례(모든 버전 포함)·진행 중인 작업. 확정한 프로젝트면 **읽기 모드**(`status = CONFIRMED` + 확정한 사례만, 아래 변경 API 는 422) |
+| `GET /api/projects/{id}/review` | S05·S06 | 원문·답변·사례(모든 버전 포함)·진행 중인 작업. 확정한 프로젝트면 **읽기 모드**(`status = confirmed` + 확정한 사례만, 아래 변경 API 는 422) |
 | `POST /api/projects/{id}/resplit` | S05 | 다시 나누기 (`{"feedback"}` 필수) → 202 |
 | `POST /api/projects/{id}/episodes/{e}/revision` | S05 | 수정 요청 (`{"feedback"}`) → 202 |
 | `POST /api/projects/{id}/episodes/{e}/clarifications/{key}/answer` | S05 | 확인 질문 답변 (`{"answer"}`) → 202 |
@@ -72,7 +85,7 @@ AI 를 부르는 요청은 `202 {"jobId"}`를 바로 돌려주고, 웹은 `GET /
 | `POST /api/projects/{id}/reopen` | S05·S06 | 재등록 시작 — 읽기 모드·라이브러리의 "수정"(웹이 안내창을 띄운 뒤). 초안으로 돌아가고 이전 확정본은 다시 확정할 때까지 검색에 사용 |
 | `GET/PUT /api/projects/{id}/rating` | S05 | 사례 생성 만족도 평가 (`{"score":1~5,"comment"}`, 없으면 GET 204) |
 | **공고·적합도 (S07·S08·S10)** | | |
-| `GET /api/job-postings` | S10 | 공고 목록 (상태: DRAFT/IN_PROGRESS/COMPLETED/FAILED, 충족 수) |
+| `GET /api/job-postings` | S10 | 공고 목록 (상태: DRAFT/in_progress/completed/failed, 충족 수) |
 | `POST /api/job-postings`, `GET/PUT/DELETE /api/job-postings/{id}` | S07 | 첫 임시 저장(id 발급)·조회·자동 저장(`version`)·삭제 |
 | `POST /api/job-postings/{id}/analyses` | S07·S08 | 적합도 분석하기 / 다시 시도 → 202. 입력 오류면 400 + `violations[]` |
 | `GET /api/job-postings/{id}/report` | S08 | 최근 분석 리포트: 충족 수, 한 줄 진단, 요건별 판정·근거 카드(사례 근거는 `projectId` + `sourceId`로 S05 읽기 모드에서 펼침)·갭 가이드 |

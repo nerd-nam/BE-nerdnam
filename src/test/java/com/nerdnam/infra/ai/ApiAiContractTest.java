@@ -169,6 +169,65 @@ class ApiAiContractTest {
         assertThat(strings(SCHEMAS.path("EmbedItem").path("required"))).doesNotContain("title");
     }
 
+    /**
+     * <b>기본값이 있는 필드에 null 을 보내지 않는다</b> (2026-10-26 실제 AI 서버 연결에서 발견).
+     *
+     * <p>계약의 일부 필드는 "없으면 기본값"이지만 <b>null 은 허용하지 않습니다</b>
+     * (예: {@code Episode.role: string, default: ''}). 도메인은 빈 값을 null 로 두는 쪽이라
+     * (역할 없는 사례 → {@code role = null}), 그대로 보내면 실제 서버가 422 로 거절합니다.
+     * 스텁은 받아 주기 때문에 실서버에 붙여야 드러났습니다.
+     *
+     * <p>그래서 보내는 record 는 값을 모를 때 null 이 아니라 <b>계약의 기본값</b>으로 채웁니다.
+     * 필수 필드(기본값 없음)는 이 규칙에서 빼둡니다 — 거기가 null 이면 BE 쪽 결함이니 드러나야 합니다.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("requestRecords")
+    void 보내는_값을_모를_때_계약의_기본값으로_채운다(String schemaName, Class<?> type) throws Exception {
+        JsonNode schema = SCHEMAS.path(schemaName);
+        List<String> defaulted = new ArrayList<>();
+        schema.path("properties").propertyNames().forEach(name -> {
+            JsonNode property = schema.path("properties").path(name);
+            boolean nullable = false;
+            for (JsonNode option : property.path("anyOf")) {
+                nullable |= "null".equals(option.path("type").asString(""));
+            }
+            if (property.has("default") && !nullable) {
+                defaulted.add(name);
+            }
+        });
+        assumeTrue(!defaulted.isEmpty(), "기본값이 있는 필드가 없는 스키마는 확인할 것이 없다");
+
+        JsonNode serialized = json(allNull(type));
+        for (String name : defaulted) {
+            assertThat(serialized.path(name).isNull())
+                    .as("%s.%s 는 계약 기본값(%s)이 있어 null 을 받지 않는다", schemaName, name,
+                            schema.path("properties").path(name).path("default"))
+                    .isFalse();
+        }
+    }
+
+    static Stream<Arguments> requestRecords() {
+        return Stream.of(
+                Arguments.of("Episode", AiEpisode.class),
+                Arguments.of("Metric", AiEpisode.Metric.class),
+                Arguments.of("RestructureRequest", RestructureRequest.class),
+                Arguments.of("MatchRequirement", MatchCall.Requirement.class),
+                Arguments.of("GapRequirement", GapGuideCall.Requirement.class),
+                Arguments.of("GapGuideRequest", GapGuideCall.Request.class),
+                Arguments.of("GuideRequest", GuideCall.Request.class),
+                Arguments.of("GuideRequirement", GuideCall.Requirement.class));
+    }
+
+    /** 모든 칸이 비어 있는(null) 값. 보내는 쪽이 빈 값을 어떻게 채우는지 보려고 만든다 */
+    private static Object allNull(Class<?> type) throws Exception {
+        Class<?>[] types = Arrays.stream(type.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getType).toArray(Class<?>[]::new);
+        Object[] values = new Object[types.length];
+        var constructor = type.getDeclaredConstructor(types);
+        constructor.setAccessible(true);
+        return constructor.newInstance(values);
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("copies")
     void 옆에_SPEC이_있으면_복사본이_최신인지_확인한다(String localResource, String sourceFile) throws IOException {

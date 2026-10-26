@@ -75,8 +75,9 @@ public class WritingGuideService {
 
     /**
      * 탭 만들기 / "이 탭 다시 만들기". 공고의 가장 최근 분석이 완료돼 있어야 한다.
-     * <b>처음 만들 때는 피드백이 없어도 되고, 다시 만들 때는 필수다</b> (C-02 S09 4, 기획서 v1.12 와 같은 규칙).
-     * 같은 조건으로 다시 만드는 요청은 GPU 를 같이 먹고 결과도 거의 같다.
+     * <b>이미 완료된 결과가 있을 때만 피드백이 필수다</b> (C-02 S09 4, 기획서 v1.12, BE #23).
+     * 같은 조건으로 다시 만드는 요청은 GPU 를 같이 먹고 결과도 거의 같다. 다만 <b>실패한 뒤 다시 시도</b>는
+     * 결과가 없으니 피드백 없이 보낼 수 있다 — 웹은 실패 상자에 "다시 시도" 버튼만 둔다.
      */
     public Long generate(Long memberId, Long postingId, GuideTab tab, String feedback) {
         AtomicReference<Long> guideId = new AtomicReference<>();
@@ -87,7 +88,11 @@ public class WritingGuideService {
                     FitReportView report = completedReport(memberId, postingId);
                     JobPostingView posting = postings.get(memberId, postingId);
                     int next = guides.maxGenerationNo(report.analysisId(), tab) + 1;
-                    if (next > 1 && (feedback == null || feedback.isBlank())) {
+                    // 피드백 필수는 **완료된 결과가 있을 때만**. 실패한 시도는 세지 않는다 (BE #23).
+                    // 실패는 서버·AI 쪽 문제라 사용자가 방향을 바꿀 이유가 없고, 결과가 없으니
+                    // 이 규칙이 막으려는 "같은 조건으로 거의 같은 결과를 또 만들기"에도 해당하지 않는다.
+                    // 생성 회차는 시도마다 올라간다 (uk_writing_guide 가 회차를 다시 쓰지 못하게 한다).
+                    if (guides.hasCompleted(report.analysisId(), tab) && (feedback == null || feedback.isBlank())) {
                         throw new BusinessException(ErrorCode.INVALID_INPUT, "어떤 방향으로 다시 만들지 알려 주세요.");
                     }
                     WritingGuide guide = guides.saveAndFlush(WritingGuide.start(report.analysisId(), tab, next, feedback));

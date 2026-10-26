@@ -1,0 +1,15 @@
+# 빌드에 필요한 파일만 Docker에 전송한다. .env·IDE·Git·기존 빌드는 제외된다.
+**
+!Dockerfile
+!gradlew
+!build.gradle.kts
+!settings.gradle.kts
+!gradle/
+!gradle/**
+!src/
+!src/main/
+!src/main/**
+**/.env
+**/.env.*
+**/application-secret.*
+**/*.log

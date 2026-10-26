@@ -17,11 +17,24 @@ public final class GuideCall {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Request(String tab, String company, String position, String companyIntro, List<String> tasks,
                           List<Requirement> requirements, String feedback) {
+
+        /** 계약에 기본값이 있는 필드는 null 로 보내지 않는다 ({@link AiEpisode} 설명) */
+        public Request {
+            company = company == null ? "" : company;
+            position = position == null ? "" : position;
+            companyIntro = companyIntro == null ? "" : companyIntro;
+            tasks = tasks == null ? List.of() : tasks;
+        }
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Requirement(Long id, String type, String text, String verdict, String reason,
                               List<MatchCall.Candidate> evidence, GapGuide gapGuide) {
+
+        /** 계약에 기본값이 있는 필드는 null 로 보내지 않는다 ({@link AiEpisode} 설명) */
+        public Requirement {
+            evidence = evidence == null ? List.of() : evidence;
+        }
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
