@@ -44,6 +44,31 @@ class HttpAiServerClientTest {
     }
 
     @Test
+    void 요건_추출_v030_응답의_약어_확장어와_연차를_읽는다() {
+        server.expect(once(), requestTo(BASE + "/requirements/extract"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.lines[0].text").value("MSA 개발 3년 이상"))
+                .andExpect(jsonPath("$.lines[0].type").value("required"))
+                .andRespond(withSuccess("""
+                        {"lines": [
+                          {"id": 2, "skills_raw": ["Redis"], "expansions": [], "min_years": null},
+                          {"id": 1, "skills_raw": ["MSA"],
+                           "expansions": ["Microservice Architecture", "마이크로서비스 아키텍처"], "min_years": 3}
+                        ], "model": "Qwen/Qwen3.5-4B", "prompt_version": "p2_v2"}
+                        """, MediaType.APPLICATION_JSON));
+
+        RequirementExtraction.Result result = client.extractRequirements(new RequirementExtraction.Request(List.of(
+                new RequirementExtraction.Line(1L, "required", "MSA 개발 3년 이상"),
+                new RequirementExtraction.Line(2L, "preferred", "Redis 경험"))));
+
+        assertThat(result.lines().getFirst().expansions()).isEmpty();
+        assertThat(result.lines().get(1)).isEqualTo(new RequirementExtraction.Extracted(1L, List.of("MSA"),
+                List.of("Microservice Architecture", "마이크로서비스 아키텍처"), 3));
+        assertThat(result.promptVersion()).isEqualTo("p2_v2");
+        server.verify();
+    }
+
+    @Test
     void 임베딩_응답을_요청_순서대로_벡터로_바꾼다() {
         server.expect(once(), requestTo(BASE + "/embed"))
                 .andExpect(method(HttpMethod.POST))

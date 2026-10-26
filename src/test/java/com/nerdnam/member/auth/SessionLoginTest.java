@@ -86,6 +86,24 @@ class SessionLoginTest {
     }
 
     @Test
+    void 다시_로그인해_동의를_재전송해도_기록은_중복되지_않고_하던_단계를_조회한다() throws Exception {
+        SocialProfile profile = new SocialProfile(SocialProvider.GOOGLE, uid(), null, "재방문 회원");
+        Long member = members.loginWithSocial(profile);
+        members.agreeToTerms(member);
+        assertThat(members.loginWithSocial(profile)).isEqualTo(member);
+
+        // S01에서 기억한 동의가 로그인 직후 다시 전송될 수 있다 (기획서 v1.41).
+        mvc.perform(post("/api/me/consents").with(login(member)).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.consentRequired").value(false));
+        mvc.perform(get("/api/me/onboarding").with(login(member)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nextStep").value("skills"));
+        assertThat(jdbc.sql("SELECT count(*) FROM app.member_consent WHERE member_id = :m")
+                .param("m", member).query(Integer.class).single()).isEqualTo(2);
+    }
+
+    @Test
     void 같은_소셜_계정은_같은_회원이고_이미_쓰인_이메일은_합치지_않는다() {
         String email = uid() + "@mail.com";
         String googleId = uid();
