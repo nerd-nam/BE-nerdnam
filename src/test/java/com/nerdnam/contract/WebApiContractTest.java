@@ -1,6 +1,7 @@
 package com.nerdnam.contract;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -49,6 +50,34 @@ class WebApiContractTest extends ApiTestSupport {
     static {
         SpringDocUtils.getConfig().addAnnotationsToIgnore(CurrentMemberId.class)
                 .replaceWithSchema(YearMonth.class, new StringSchema().pattern("^[0-9]{4}-(0[1-9]|1[0-2])$").example("2026-10"));
+    }
+
+    /**
+     * <b>SPEC 복사본이 뒤처졌는지 알려 준다.</b> C-03 은 BE 가 원본이고 SPEC 이 복사본인데
+     * (SPEC README 협업 규칙), 복사본을 올리는 PR 을 잊으면 <b>웹 목업(Prism, 기획서 v1.40)이
+     * 옛 계약으로 응답합니다</b> — 2026-10-26 에 실제로 SPEC 이 v0.1.2 에 머물러, 고친 예시가
+     * FE 에 전달되지 않고 있었습니다.
+     *
+     * <p>SPEC 체크아웃이 없는 CI 에서는 건너뜁니다. 로컬에서 이 테스트가 실패하면 코드가 틀린 것이
+     * 아니라 <b>SPEC 에 PR 을 올릴 때</b>라는 뜻입니다.
+     */
+    @Test
+    void 옆에_SPEC이_있으면_복사본이_뒤처졌는지_알려_준다() throws Exception {
+        Path specCopy = Path.of("../SPEC-nerdnam/contracts/web-api.openapi.yaml");
+        assumeTrue(Files.isDirectory(specCopy.getParent().getParent()),
+                "SPEC 체크아웃이 없는 CI 에서는 확인하지 않는다");
+        assertThat(specCopy).as("SPEC 의 계약 파일이 이동하거나 삭제됐는지 확인").exists();
+        assertThat(Files.exists(COPY)).as("./gradlew exportWebApiContract 로 계약을 먼저 내보내세요").isTrue();
+
+        JsonNode mine = YAML.readTree(Files.readString(COPY));
+        JsonNode spec = YAML.readTree(Files.readString(specCopy));
+        String myVersion = mine.path("info").path("version").asString("?");
+        String specVersion = spec.path("info").path("version").asString("?");
+        assertThat(spec).as(
+                        "SPEC 복사본이 BE 계약과 다릅니다 (BE %s ↔ SPEC %s). contracts/web-api.openapi.yaml 을 "
+                                + "SPEC 으로 복사해 PR 을 올리세요 — 복사본이 뒤처지면 웹 목업(Prism)이 옛 계약으로 응답합니다",
+                        myVersion, specVersion)
+                .isEqualTo(mine);
     }
 
     @Test
