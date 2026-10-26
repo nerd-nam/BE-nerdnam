@@ -37,6 +37,34 @@ class StubAiServerClientTest {
         assertThat(stub.health().ready()).isTrue();
     }
 
+    /** 계약 v0.3.0: 줄마다 약어 확장어를 돌려준다. 없으면 빈 목록이다 (기획서 5.4) */
+    @Test
+    void 요건_추출은_약어의_확장어를_돌려준다_v0_3_0() {
+        var request = new RequirementExtraction.Request(List.of(
+                new RequirementExtraction.Line(1L, "required", "MSA 환경 개발 경험 3년 이상"),
+                new RequirementExtraction.Line(2L, "required", "Redis 경험"),
+                new RequirementExtraction.Line(3L, "preferred", "Kubernetes 운영 경험")));
+
+        var lines = stub.extractRequirements(request).lines();
+
+        assertThat(lines.get(0).expansions())
+                .containsExactly("Microservice Architecture", "마이크로서비스 아키텍처");
+        assertThat(lines.get(0).minYears()).isEqualTo(3);
+        assertThat(lines.get(1).expansions()).as("약어가 없으면 빈 목록").isEmpty();
+        assertThat(lines.get(2).expansions()).as("줄에 이미 있는 말은 확장어로 넣지 않는다").isEmpty();
+    }
+
+    @Test
+    void 같은_입력이면_확장어도_항상_같은_순서다() {
+        var request = new RequirementExtraction.Request(List.of(
+                new RequirementExtraction.Line(1L, "required", "MSA 와 K8S 와 RDBMS 경험")));
+
+        var first = stub.extractRequirements(request).lines().getFirst().expansions();
+        var again = stub.extractRequirements(request).lines().getFirst().expansions();
+
+        assertThat(first).as("줄마다 최대 3개").hasSize(3).isEqualTo(again);
+    }
+
     /** 기획서 v1.20 입력 규칙 — 진짜 AI 서버는 422 를 주므로 스텁도 AI_ERROR 로 실패시킨다 */
     @Test
     void 입력_규칙을_어기면_AI_오류다_v1_20() {

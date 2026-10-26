@@ -1,4 +1,4 @@
-# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.2.1, 2026-10-23, SPEC PR #46)
+# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.3.0, 2026-10-26, SPEC PR #52·#54, 태그 contracts-v0.3.0)
 # 계약이 바뀌면 다시 복사한다. 대조는 ApiAiContractTest가 한다.
 openapi: 3.1.0
 info:
@@ -15,7 +15,7 @@ info:
     - `/guide`는 탭마다 1회 호출, JSON 응답(SSE 아님).
 
     '
-  version: 0.2.1
+  version: 0.3.0
 paths:
   /embed:
     post:
@@ -468,6 +468,11 @@ components:
             type: string
           type: array
           title: Skills Raw
+        expansions:
+          items:
+            type: string
+          type: array
+          title: Expansions
         min_years:
           anyOf:
           - type: integer
@@ -477,8 +482,11 @@ components:
       required:
       - id
       - skills_raw
+      - expansions
       title: ExtractedLine
-      description: 문구는 돌려주지 않는다(바꾸지 않으므로). 기술명은 원문 그대로, 정규화는 API가 한다
+      description: '문구는 돌려주지 않는다(바꾸지 않으므로). 기술명은 원문 그대로, 정규화는 API가 한다.
+
+        expansions: 줄에 쓰인 약어의 풀네임·같은 뜻의 다른 표기(관련어 아님). 없으면 빈 목록. API가 검색 질의 확장에 쓴다'
     GapAdvice:
       properties:
         advice:

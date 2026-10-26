@@ -1,6 +1,6 @@
 # AI 계약 테스트 자원
 
-계약은 2026-10-23에 SPEC PR #46 (`fab3729`, C-04 v0.2.1)에서 복사했다. 생성 엔드포인트 5개의 504 응답이 추가됐고 요청·응답 타입은 같다. `guide.json`은 SPEC PR #39의 예시와 동일하다.
+계약은 2026-10-26에 SPEC PR #52·#54 (C-04 **v0.3.0**, 태그 `contracts-v0.3.0`)에서 복사했다. `/requirements/extract` 응답에 `expansions`(필수, 약어 확장어)가 추가됐다. `guide.json`은 같은 시점 SPEC 예시이고 `prompt_version`이 `p4_v2`·`p5_v2`로 올랐다.
 
 | 파일 | 원본 |
 | --- | --- |

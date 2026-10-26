@@ -4,7 +4,7 @@ nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의
 인증, 도메인 로직, 데이터 저장(PostgreSQL + pgvector), AI 서버 호출 조율을 맡습니다.
 
 - 기준 문서: `nerdnam-docs`(SPEC-nerdnam)의 `기획서.md` v1.31, `작업목록.md`, ADR
-- 계약: C-04 v0.2.1은 [AI 계약 테스트](docs/06-AI-계약-초안.md)로 대조한다. C-03 v0.1.0은 [웹 계약 파일](contracts/web-api.openapi.yaml)과 [연결 안내](docs/08-웹-API-계약.md)를 보고 SPEC PR에서 함께 검토한다.
+- 계약: **C-04 `contracts-v0.3.0`** 을 따르고 [AI 계약 테스트](docs/06-AI-계약-초안.md)로 대조한다. **C-03 v0.1.2** 는 [웹 계약 파일](contracts/web-api.openapi.yaml)과 [연결 안내](docs/08-웹-API-계약.md)에 있다 (SPEC PR #47 로 머지).
 
 ## 빠른 시작
 
@@ -88,7 +88,7 @@ curl -H 'X-Member-Id: 1' localhost:8080/api/me/onboarding
 curl -X POST -H 'X-Member-Id: 1' -H 'Content-Type: application/json' -d '{"name":"리액트"}' localhost:8080/api/me/skills
 ```
 
-JSON 값 이름은 지금 Java enum 그대로 대문자입니다(`MET`, `LANGUAGE`). 계약(C-03)에서 소문자로 정하면 응답 DTO 에서 바꿉니다.
+JSON 값은 소문자입니다(`met`, `language`, `in_progress`) — D-10 결정. 오류 코드(`ProblemDetail.title`)만 대문자입니다. `JsonValueCaseTest` 가 고정합니다.
 
 ## 설계 문서
 

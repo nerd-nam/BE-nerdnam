@@ -21,11 +21,14 @@ import com.nerdnam.profile.application.CareerService;
 import com.nerdnam.profile.application.UserSkillService;
 import com.nerdnam.profile.application.UserSkillView;
 import com.nerdnam.rag.application.ChunkSearch;
+import com.nerdnam.skill.application.SkillCatalog;
+import com.nerdnam.skill.application.SkillSummary;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,14 +60,16 @@ class FitAnalysisPipeline {
     private final ChunkSearch search;
     private final CareerService careers;
     private final UserSkillService userSkills;
+    private final SkillCatalog skillCatalog;
 
     FitAnalysisPipeline(AiServerClient ai, JobPostingService postings, ChunkSearch search, CareerService careers,
-                        UserSkillService userSkills) {
+                        UserSkillService userSkills, SkillCatalog skillCatalog) {
         this.ai = ai;
         this.postings = postings;
         this.search = search;
         this.careers = careers;
         this.userSkills = userSkills;
+        this.skillCatalog = skillCatalog;
     }
 
     record Output(List<Judged> judged, String aiModel, String promptVersion) {
@@ -77,9 +82,12 @@ class FitAnalysisPipeline {
                         .map(l -> new RequirementExtraction.Line(l.requirementId(), l.type().toLowerCase(), l.text()))
                         .toList()));
         Map<Long, JobPostingService.Extracted> extracted = new HashMap<>();
+        Map<Long, List<String>> expansions = new HashMap<>();   // 요건 id → 약어 확장어 (검색에만 쓰고 저장하지 않는다)
         if (extraction.lines() != null) {
-            extraction.lines().stream().filter(e -> e.id() != null)
-                    .forEach(e -> extracted.put(e.id(), new JobPostingService.Extracted(e.skillsRaw(), e.minYears())));
+            extraction.lines().stream().filter(e -> e.id() != null).forEach(e -> {
+                extracted.put(e.id(), new JobPostingService.Extracted(e.skillsRaw(), e.minYears()));
+                expansions.put(e.id(), e.expansions());
+            });
         }
         PostingForAnalysis withSkills = postings.applyExtraction(memberId, posting.postingId(), extracted);
         List<RequirementSnapshot> requirements = withSkills.requirements().stream()
@@ -87,12 +95,16 @@ class FitAnalysisPipeline {
                 .toList();
 
         // 3. 요건 임베딩 → 4. 요건별 후보 (이 회원의 청크만)
+        // 질의는 "원문 (확장어1, 확장어2)" 다. 원문을 남겨야 요건과 경험 중 어느 쪽에 약어가 있어도 걸린다 (기획서 5.4)
         Embeddings queries = ai.embed(                        // 요건 검색은 제목 없이 문구만 보낸다 (기획서 5.5)
-                requirements.stream().map(r -> EmbedItem.of(r.text())).toList(), EmbedPurpose.QUERY);
+                requirements.stream()
+                        .map(r -> EmbedItem.of(searchQuery(r.text(), expansions.get(r.requirementId()))))
+                        .toList(), EmbedPurpose.QUERY);
         Map<Long, List<Candidate>> candidates = new LinkedHashMap<>();
         for (int i = 0; i < requirements.size(); i++) {
             RequirementSnapshot r = requirements.get(i);
-            candidates.put(r.requirementId(), search.search(memberId, queries.vectors().get(i), r.skills(), CANDIDATES)
+            List<String> keywords = searchKeywords(r.skills(), expansions.get(r.requirementId()));
+            candidates.put(r.requirementId(), search.search(memberId, queries.vectors().get(i), keywords, CANDIDATES)
                     .stream()
                     .map(h -> new Candidate(h.chunkId(), EvidenceSourceType.valueOf(h.type().name()), h.sourceId(),
                             h.sourceVersion(), h.content(), h.score()))
@@ -196,6 +208,31 @@ class FitAnalysisPipeline {
                 .map(c -> new CareerPeriod(c.startMonth(), c.endMonth(), c.userSkillIds().stream()
                         .map(skillNames::get).filter(Objects::nonNull).collect(Collectors.toSet())))
                 .toList();
+    }
+
+    /**
+     * 요건 검색 질의 — {@code 원문 (확장어1, 확장어2)} (기획서 5.4). 확장어가 없으면 원문 그대로다.
+     * 평가에서 MRR 0.86 → 0.94, "MSA 환경" 정답 순위 7위 → 1위 (ADR-0001 "요건 약어 확장 실험").
+     */
+    static String searchQuery(String text, List<String> expansions) {
+        if (expansions == null || expansions.isEmpty()) {
+            return text;
+        }
+        return text + " (" + String.join(", ", expansions) + ")";
+    }
+
+    /**
+     * 키워드 검색에 쓸 기술명 — 요건의 정규화된 기술명 + 확장어 중 <b>사전에 있는 것</b>.
+     * 청크의 {@code skills} 는 표준 기술명이라, 사전에 없는 확장어("관계형 데이터베이스 관리 시스템")는 겹칠 일이
+     * 없다. 사전 보강 기록({@code normalizeForPosting})에는 넣지 않는다 — 확장어는 기술명이 아닐 수 있다.
+     */
+    List<String> searchKeywords(List<String> skills, List<String> expansions) {
+        if (expansions == null || expansions.isEmpty()) {
+            return skills;
+        }
+        LinkedHashSet<String> keywords = new LinkedHashSet<>(skills);
+        expansions.forEach(e -> skillCatalog.find(e).map(SkillSummary::name).ifPresent(keywords::add));
+        return List.copyOf(keywords);
     }
 
     private static MatchCall.Candidate toAi(Candidate c) {
