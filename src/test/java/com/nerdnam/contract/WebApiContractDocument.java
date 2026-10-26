@@ -43,7 +43,7 @@ final class WebApiContractDocument {
 
     private void metadata() {
         document.put("openapi", "3.1.0");
-        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.3")
+        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.4")
                 .put("description", """
                         C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
                         JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -456,7 +456,7 @@ final class WebApiContractDocument {
             return "로그인 전에 동의한 사용자만 로그인 직후 호출한다. 기존 사용자의 약관 버전이 바뀌었으면 현재 약관을 보여주고 다시 동의받은 뒤 호출한다. 본문 없이 현재 termsVersion으로 두 동의 항목을 기록한다. 중복 호출해도 같은 기록을 추가하지 않는다.";
         }
         if (path.endsWith("/guides/{tab}") && method.equals("post")) {
-            return "최신 완료 분석의 탭을 만든다. 첫 생성은 feedback을 생략할 수 있다. 같은 분석에서 두 번째 생성부터는 실패 뒤 다시 요청할 때도 공백 아닌 feedback이 필수이며 없으면 400이다. 새 분석이면 새 탭으로 만들므로 첫 생성 규칙을 적용한다. 같은 탭 진행 중에는 409와 runningJobId를 준다.";
+            return "최신 완료 분석의 탭을 만든다. 이 분석·이 탭에 완료된 결과가 없으면 feedback 을 생략할 수 있다 — 첫 생성과, 생성이 실패한 뒤 다시 시도할 때다. 완료된 결과가 있으면 공백 아닌 feedback 이 필수이며 없으면 400 이다. 새 분석이면 새 탭으로 만들므로 첫 생성 규칙을 적용한다. 같은 탭 진행 중에는 409와 runningJobId를 준다.";
         }
         if (path.endsWith("/analyses")) {
             return method.equals("get") ? "이 공고의 분석 기록을 requestedAt·analysisId 내림차순으로 준다. 없으면 빈 배열이다. analysisId로 이전 리포트를 조회한다."

@@ -139,6 +139,34 @@ class WritingGuideApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.tabs[0].generationNo").value(2));
     }
 
+    /**
+     * 실패한 생성은 "다시 만들기"로 세지 않는다 (BE #23). 실패는 서버·AI 쪽 문제라 사용자가 방향을
+     * 바꿀 이유가 없고, 웹은 실패 상자에 "다시 시도" 버튼만 둔다.
+     */
+    @Test
+    void 생성이_실패한_뒤_다시_시도는_피드백_없이_된다() throws Exception {
+        Long member = newMember();
+        Long posting = analyzedPosting(member);
+        Long analysis = jdbc.sql("SELECT id FROM app.fit_analysis WHERE job_posting_id = :p")
+                .param("p", posting).query(Long.class).single();
+        // 첫 만들기가 실패한 상태를 만든다 (GPU 꺼짐·시간 초과)
+        jdbc.sql("""
+                INSERT INTO app.writing_guide (fit_analysis_id, tab, generation_no, status)
+                VALUES (:a, 'MOTIVATION', 1, 'FAILED')
+                """).param("a", analysis).update();
+
+        postJson(member, null, "/api/job-postings/{id}/guides/motive", posting)
+                .andExpect(status().isAccepted());
+        getJson(member, "/api/job-postings/{id}/guides/motive", posting)
+                .andExpect(jsonPath("$.status").value("completed"))
+                .andExpect(jsonPath("$.feedback").doesNotExist());
+
+        // 완료된 결과가 생긴 뒤부터는 피드백이 필수다
+        postJson(member, null, "/api/job-postings/{id}/guides/motive", posting)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("어떤 방향으로 다시 만들지 알려 주세요."));
+    }
+
     @Test
     void 포트폴리오_페이지는_순서대로_저장된다() throws Exception {
         Long member = newMember();
