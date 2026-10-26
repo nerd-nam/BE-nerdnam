@@ -56,6 +56,17 @@ wait_job() {
 echo 'AI 상태:'
 health=$(curl -fsS --connect-timeout 3 --max-time 5 "$AI_URL/health")
 jq . <<<"$health"
+# 떠 있는 AI 서버의 계약 버전이 BE 가 가진 복사본과 같은지 먼저 본다.
+# 다르면 아래 흐름이 통과해도 "지금 계약대로 동작한다"는 증명이 못 된다 (복사본 어긋남은 조용히 지나간다).
+ai_version=$(jq -er '.info.version' < <(curl -fsS --connect-timeout 3 --max-time 10 "$AI_URL/openapi.json"))
+copy_version=$(sed -n 's/^  version: *//p' src/test/resources/contracts/api-ai.openapi.yaml | head -1)
+printf 'AI 계약: 서버 %s · BE 복사본 %s\n' "$ai_version" "$copy_version"
+if [[ "$ai_version" != "$copy_version" ]]; then
+  echo "계약 버전이 다릅니다. SPEC 에서 api-ai.openapi.yaml 을 다시 복사하고 ApiAiContractTest 를 돌려 주세요." >&2
+  echo "일부러 다른 버전에 붙여 보는 중이면 ALLOW_CONTRACT_MISMATCH=1 을 붙여 주세요." >&2
+  [[ ${ALLOW_CONTRACT_MISMATCH:-} == 1 ]] || exit 1
+fi
+
 echo 'BE 상태:'
 curl -fsS --connect-timeout 3 --max-time 5 "$BE_URL/actuator/health" | jq -e '.status == "UP"'
 echo 'FE 응답:'
