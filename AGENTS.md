@@ -34,20 +34,24 @@ cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 �
 
 ## 현재 상태 (2026-10-26)
 
+- **실제 AI 서버 HTTP 연결 확인 (2026-10-26):** AI 레포를 `AI_MODE=stub` 으로 띄우고 BE 를 `nerdnam.ai.stub=false` 로 붙여 `bash scripts/local-smoke.sh --flow` 가 통과했다 — 프로젝트 등록 → 나누기 → 확인 질문 답하기 → 확정 → 공고 → 분석 → 리포트 → 지원동기 탭. 5개 생성 엔드포인트와 `/embed` 가 AI 서버 로그에 모두 찍혔다. **계약 불일치 1건을 찾아 고쳤다**: 계약에 기본값이 있는 필드(`Episode.role` 등)에 null 을 보내 실제 서버가 422 로 거절했다 — 스텁은 받아 주던 자리다. `infra.ai` 의 보내는 record 가 계약 기본값으로 채우도록 바꾸고, 계약 파일에서 기본값 필드를 읽어 검사하는 테스트로 고정했다. 품질·속도는 `AI_MODE=real` + GPU 가 필요해 아직이다. 기록은 [10 로컬 연결 테스트](docs/10-로컬-연결-테스트.md).
+
+- **Compose에 API 추가:** Java 21 멀티 스테이지 빌드, DB·Redis 준비 후 기동, 세션 인증·AI 스텁 기본값, `.env` OAuth 키 전달, 콜백 주소 고정. `docker compose up`만으로 로컬 서버 묶음을 준비한다. [11 Docker 실행](docs/11-Docker-Compose-실행.md). Docker 엔진 접근 제한으로 실제 컨테이너 빌드·기동은 미검증이며, Compose 구성 검증·실행 jar 빌드·기존 테스트 성공은 확인했다.
+
 - **로컬 SPEC `bbb835d`, 기획서 v1.41까지 대조.** 원격 `git pull --ff-only`는 이 실행 환경에서 GitHub DNS 실패로 실행되지 않았다. 따라서 원격 최신 여부와 열린 PR·이슈 현황은 재확인이 필요하다.
 - `fix/spec-v141-integration`은 로컬 `main`에서 만들고, 기존 검색 브랜치의 `7875514`·`2105d77`과 계약 예시 수정 `823b50c`를 모았다. 원래 브랜치는 보존했다. **main 반영·푸시·PR은 하지 않았다.**
 - **주요 기능 구현 완료, 실제 서비스 연결 검증은 남음:** 기술·경력·프로젝트, 사례 검토·확정·재등록·삭제, RAG 등록, 공고·분석 기록·리포트, 작성 방향 5개 탭, 로그인·동의·탈퇴, 라이브러리·AI 작업 조회. AI 품질·속도는 스텁 테스트로 증명하지 않는다.
 - **C-04 v0.3.0 / SPEC PR #52:** 요건 `expansions`를 임베딩 질의와 사전 기반 키워드 검색에 연결. 확장어는 원문·연차 계산·판정의 기술 목록을 바꾸지 않는다. **D-12 후보 몫(5/3/4/8)과 D-13 BE 답은 구현됐지만 SPEC #58 합의 확인이 남음.**
 - **C-03 v0.1.3:** SPEC PR #47은 로컬 이력에서 머지 확인. 계약 예시 상태와 몸통을 맞춘 수정도 통합했다. v1.40 Prism 목업 규칙과 일치한다.
 - **v1.41:** 로그인 복귀용 `nextStep`·`reviewingProjectId`, 동의 전 403, 재동의, 실패 복귀 주소는 기존 구현과 일치. 브라우저 탭의 동의 기억·S05 이동은 FE 책임이다. ADR-0006 B10 문구는 AI 판정 기준이므로 BE 강제 판정 규칙을 추가하지 않았다.
-- **검증:** 전체 테스트 275개 통과. 기존 272개에 C-04 HTTP 응답 해석, 추출 결과 순서가 바뀌어도 검색·판정에 바르게 연결되는지, 재로그인 후 동의 재전송의 중복 방지 검증 3개를 추가했다.
+- **검증:** 전체 테스트 283개 통과. 272개에 C-04 HTTP 응답 해석·추출 결과 순서·재동의 중복 방지 3개(v1.41 통합)와, 계약 기본값 필드를 계약 파일에서 읽어 검사하는 8개(실서버 연결)를 더했다.
 - Redis는 현재 세션 저장에 사용한다. **AI 결과 캐시는 미구현**이다. 실제 AI 서버 HTTP 연동·모델 품질·GPU 성능 검증도 미완료다.
 - 자세한 변경점·완료 범위·남은 작업은 [09 최신 SPEC와 백엔드 현황](docs/09-최신-SPEC와-백엔드-현황.md)을 본다. 과거 BE 이슈 10건 종료는 2026-10-23 기록이며, 현재 열린 이슈가 0건이라는 뜻은 아니다.
 
 ## 다음 할 일 (우선순위 순)
 
 1. 네트워크가 가능한 환경에서 SPEC·BE 원격 이력을 갱신하고 통합 브랜치와 열린 PR의 중복을 확인한다. D-12·D-13은 SPEC #58 결론 확인 후 확정한다.
-2. **BE → AI HTTP 전체 흐름** 확인. AI 레포는 이제 실제 모델 구현을 갖췄다. `nerdnam.ai.stub=false`로 연결하고 AI 서버의 `AI_MODE=stub`과 `real`을 구분한다. real에서만 검색 근거·판정 품질·성능을 확인한다.
+2. **`AI_MODE=real` + GPU 에서 품질·성능 측정.** `AI_MODE=stub` 왕복은 2026-10-26 에 확인했다(위 "현재 상태"). real 에서만 검색 근거·판정 품질·응답 시간을 볼 수 있고, 가짜 응답 모드에서는 청크가 임베딩 대기로 남아 근거가 비는 것이 정상이다.
 3. **FE 실제 연결:** Google·카카오 OAuth 왕복, 쿠키·CSRF·동의, 검토 복귀와 리포트·작성 방향까지. 목업이나 MockMvc 성공을 브라우저 연결 완료로 표시하지 않는다.
 4. **BE-17:** 암호화할 저장 필드·키 관리 방식을 정하고 구현한다. AI로 보내는 자유 입력의 개인정보 제거와 로그 노출도 점검한다.
 5. **Redis AI 단계 캐시:** `/embed` 질의·요건 추출의 범위, TTL, 모델·프롬프트 변경 시 무효화를 정한다. 분석 기록은 항상 새로 쌓는다.
@@ -58,7 +62,8 @@ cd ../SPEC-nerdnam && git pull --ff-only && git log --oneline -15 && head -25 �
 ## 실행
 
 ```bash
-docker compose up -d                       # PostgreSQL 17 + pgvector, Redis
+docker compose up                         # API + PostgreSQL 17 + pgvector + Redis (세션 인증, AI 스텁)
+# IDE에서 BE를 실행하려면 docker compose stop api 후 docker compose up -d postgres redis
 ./gradlew test                             # 전체 테스트 (Testcontainers → Docker 필요)
 NERDNAM_TEST_USE_LOCAL_DB=true ./gradlew test   # Docker 없이: localhost:5432/nerdnam (pgvector 필요)
 ./gradlew bootRun                          # local 프로필: X-Member-Id 헤더 인증, AI 스텁

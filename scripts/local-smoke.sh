@@ -83,6 +83,17 @@ job=$(request POST "/api/projects/$project/split" | jq -er '.jobId')
 wait_job "$job" '사례 재구성'
 review=$(request GET "/api/projects/$project/review")
 jq -e '.episodes | length > 0' <<<"$review" >/dev/null
+# 확인 질문 하나는 "답하기"로 처리한다 (mode=episode). 사례를 AI 서버로 되돌려 보내는 경로라
+# 계약이 어긋나면 여기서만 드러난다 — 2026-10-26 에 role=null 로 422 가 났던 자리다.
+answer_target=$(jq -r 'first(.episodes[] | select(.clarifications | length > 0) | [.id, (.clarifications[0].key | @uri), .clarifications[0].question] | @tsv) // empty' <<<"$review")
+if [[ -n "$answer_target" ]]; then
+  IFS=$'\t' read -r episode key question <<<"$answer_target"
+  printf '확인 질문에 답하기: 사례 %s (%s)\n' "$episode" "$question"
+  job=$(request POST "/api/projects/$project/episodes/$episode/clarifications/$key/answer" \
+    '{"answer":"응답 시간을 1.2초에서 0.3초로 줄였어요."}' | jq -er '.jobId')
+  wait_job "$job" '확인 질문 답하기'
+  review=$(request GET "/api/projects/$project/review")
+fi
 while IFS=$'\t' read -r episode key; do
   request POST "/api/projects/$project/episodes/$episode/clarifications/$key/drop" >/dev/null
 done < <(jq -r '.episodes[] | .id as $id | .clarifications[] | [$id, (.key | @uri)] | @tsv' <<<"$review")

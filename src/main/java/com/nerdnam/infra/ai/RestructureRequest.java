@@ -28,6 +28,14 @@ public record RestructureRequest(
         Answer answer) {
 
     /** 첫 나누기 (S04 "재구성하기"). 원문을 고쳐 다시 나누는 것도 이 모드다 */
+    /** 계약에 기본값이 있는 필드는 null 로 보내지 않는다 ({@link AiEpisode} 설명) */
+    public RestructureRequest {
+        title = title == null ? "" : title;
+        skills = skills == null ? List.of() : skills;
+        previousEpisodes = previousEpisodes == null ? List.of() : previousEpisodes;
+        currentEpisodes = currentEpisodes == null ? List.of() : currentEpisodes;
+    }
+
     public static final String MODE_INITIAL = "initial";
     /** 다시 나누기 (S05). 비어 있지 않은 feedback 이 필요하다 (기획서 F2·v1.20) */
     public static final String MODE_SPLIT = "split";
