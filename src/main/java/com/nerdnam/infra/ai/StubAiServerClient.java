@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>재구성: 빈 줄로 나뉜 문단 하나 = 사례 하나(최대 3개). 숫자가 없는 문단은 "결과 수치" 확인 질문을 단다.
  *       피드백에 "합쳐"가 있으면 하나로 합친다.</li>
- *   <li>요건 추출: 영문 기술명 덩어리와 "N년"을 뽑는다.</li>
+ *   <li>요건 추출: 영문 기술명 덩어리와 "N년"을 뽑고, 아래 표에 있는 약어는 확장어를 붙인다(계약 v0.3.0 `expansions`).</li>
  *   <li>판정: 후보 청크에 요건 기술명이 들어 있으면 충족, 기술명이 없는 요건에 후보가 있으면 부분 충족, 아니면 미충족.</li>
  * </ul>
  *
@@ -37,6 +37,21 @@ public class StubAiServerClient implements AiServerClient {
     private static final Pattern YEARS = Pattern.compile("(\\d+)\\s*년");
     private static final Pattern SKILL = Pattern.compile("[A-Za-z][A-Za-z0-9+#.\\-]*(?:\\s[A-Z][A-Za-z0-9+#.\\-]*)*");
     private static final int MAX_EPISODES = 3;
+
+    /**
+     * 약어 확장어 (계약 v0.3.0). 진짜 AI 는 줄의 문맥을 보고 만들지만, 스텁은 자주 쓰는 약어만 표로 가진다 —
+     * 검색 질의 확장(기획서 5.4)이 로컬·테스트에서도 실제로 동작하는지 보기 위해서다. 줄마다 최대 3개.
+     */
+    private static final Map<String, List<String>> EXPANSIONS = new LinkedHashMap<>();   // 순서를 지켜야 결과가 같다
+
+    static {
+        EXPANSIONS.put("MSA", List.of("Microservice Architecture", "마이크로서비스 아키텍처"));
+        EXPANSIONS.put("K8S", List.of("Kubernetes"));
+        EXPANSIONS.put("RDBMS", List.of("Relational Database Management System", "관계형 데이터베이스 관리 시스템"));
+        EXPANSIONS.put("CI/CD", List.of("Continuous Integration", "Continuous Delivery"));
+        EXPANSIONS.put("API", List.of("Application Programming Interface"));
+    }
+    private static final int MAX_EXPANSIONS = 3;
 
     /** /restructure 의 mode 와 /guide 의 tab 은 이 값만 받는다 (기획서 v1.20) */
     private static final Set<String> MODES =
@@ -84,7 +99,8 @@ public class StubAiServerClient implements AiServerClient {
             }
             Matcher years = YEARS.matcher(line.text());
             Integer minYears = years.find() ? Integer.valueOf(years.group(1)) : null;
-            return new RequirementExtraction.Extracted(line.id(), List.copyOf(skills), minYears);
+            return new RequirementExtraction.Extracted(line.id(), List.copyOf(skills), expansions(line.text()),
+                    minYears);
         }).toList();
         return new RequirementExtraction.Result(lines, LLM, PROMPT_VERSION);
     }
@@ -155,6 +171,24 @@ public class StubAiServerClient implements AiServerClient {
             content.put("feedback_applied", request.feedback());
         }
         return new GuideCall.Result(content, cited, LLM, PROMPT_VERSION);
+    }
+
+    /** 줄에 쓰인 약어의 확장어. 줄에 이미 있는 말과 중복은 빼고 최대 3개 (기획서 5.5 AI 쪽 정리 규칙과 같다) */
+    private static List<String> expansions(String text) {
+        String upper = text.toUpperCase(Locale.ROOT);
+        List<String> result = new ArrayList<>();
+        EXPANSIONS.forEach((abbreviation, words) -> {
+            if (!upper.contains(abbreviation)) {
+                return;
+            }
+            for (String word : words) {
+                if (result.size() < MAX_EXPANSIONS && !upper.contains(word.toUpperCase(Locale.ROOT))
+                        && !result.contains(word)) {
+                    result.add(word);
+                }
+            }
+        });
+        return List.copyOf(result);
     }
 
     // ------------------------------------------------------------------ 입력 규칙 (기획서 v1.20)

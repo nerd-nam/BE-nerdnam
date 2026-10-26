@@ -71,7 +71,8 @@ class ApiAiContractTest {
         var item = new EmbedItem("캐시를 적용했다", "성능 개선");
         var candidate = new MatchCall.Candidate(1L, lower(EvidenceSourceType.EPISODE), "캐시를 적용했다");
         var line = new RequirementExtraction.Line(1L, lower(RequirementType.REQUIRED), "Redis 경험");
-        var extracted = new RequirementExtraction.Extracted(1L, List.of("Redis"), 1);
+        var extracted = new RequirementExtraction.Extracted(1L, List.of("Redis"),
+                List.of("Relational Database Management System"), 1);
         var requirement = new MatchCall.Requirement(1L, lower(RequirementType.REQUIRED), "Redis 경험",
                 List.of("Redis"), 1, List.of(candidate));
         var judgement = new MatchCall.Judgement(1L, lower(Verdict.PARTIAL), List.of(1L), "기간 확인이 필요해요");
@@ -98,7 +99,7 @@ class ApiAiContractTest {
                 record("RestructureResponse", new RestructureResult(List.of(episode), "모델", "p1"), "model prompt_version episodes"),
                 record("RequirementLine", line, "id type text"),
                 record("ExtractRequest", new RequirementExtraction.Request(List.of(line)), "lines"),
-                record("ExtractedLine", extracted, "id skills_raw"),
+                record("ExtractedLine", extracted, "id skills_raw expansions"),
                 record("ExtractResponse", new RequirementExtraction.Result(List.of(extracted), "모델", "p2"), "model prompt_version lines"),
                 record("Candidate", candidate, "chunk_id chunk_type text"),
                 record("MatchRequirement", requirement, "id type text candidates"),

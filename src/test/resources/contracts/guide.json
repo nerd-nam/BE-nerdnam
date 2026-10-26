@@ -4,7 +4,7 @@
   "guides": {
     "motive": {
       "model": "Qwen/Qwen3.5-4B",
-      "prompt_version": "p4_v1",
+      "prompt_version": "p4_v2",
       "content": {
         "tab": "motive",
         "message": "결제 성능 문제를 풀어 본 경험을, 더 큰 결제 트래픽에서 이어 가고 싶다.",
@@ -45,7 +45,7 @@
     },
     "intro": {
       "model": "Qwen/Qwen3.5-4B",
-      "prompt_version": "p4_v1",
+      "prompt_version": "p4_v2",
       "content": {
         "tab": "intro",
         "message": "병목을 수치로 찾고, 구조로 해결하는 백엔드 개발자",
@@ -129,7 +129,7 @@
     },
     "portfolio": {
       "model": "Qwen/Qwen3.5-4B",
-      "prompt_version": "p4_v1",
+      "prompt_version": "p4_v2",
       "content": {
         "tab": "portfolio",
         "message": "문제 → 설계 선택의 이유 → Before/After 수치 순서로 보여 주기",
@@ -222,7 +222,7 @@
     },
     "career": {
       "model": "Qwen/Qwen3.5-4B",
-      "prompt_version": "p4_v1",
+      "prompt_version": "p4_v2",
       "content": {
         "tab": "career",
         "message": "OO커머스 업무를 공고 용어로 다시 쓰고, 업무마다 성과를 한 줄씩",
@@ -280,7 +280,7 @@
     },
     "image": {
       "model": "Qwen/Qwen3.5-4B",
-      "prompt_version": "p4_v1",
+      "prompt_version": "p5_v2",
       "content": {
         "tab": "image",
         "prompts": [
