@@ -188,6 +188,19 @@ class WritingGuideApiTest extends ApiTestSupport {
 
         postJson(member, null, "/api/job-postings/{id}/guides/motive", posting).andExpect(status().isNotFound());
         postJson(member, null, "/api/job-postings/{id}/guides/unknown", posting).andExpect(status().isNotFound());
+
+        // 탭 목록도 같은 기준으로 가른다: 분석한 적 없음 404, 분석이 안 끝남 422 (기획서 v1.53 S09 1).
+        // 웹은 이 두 값으로 S08 로 보낼지 정하므로 바뀌면 화면 흐름이 깨진다.
+        getJson(member, "/api/job-postings/{id}/guides", posting)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value("아직 분석한 적이 없는 공고예요."));
+        jdbc.sql("""
+                INSERT INTO app.fit_analysis (member_id, job_posting_id, status, failure_code)
+                VALUES (:m, :p, 'FAILED', 'TIMEOUT')
+                """).param("m", member).param("p", posting).update();
+        getJson(member, "/api/job-postings/{id}/guides", posting)
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("적합도 분석이 끝난 뒤에 작성 방향을 만들 수 있어요."));
     }
 
     @Test
