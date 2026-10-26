@@ -1,8 +1,48 @@
-# 로컬 개발용 인프라: PostgreSQL(+pgvector), Redis
-#   실행: docker compose up -d
+# 다른 개발자의 로컬 테스트: API + PostgreSQL(+pgvector) + Redis
+#   처음 실행: docker compose up (이미지가 없으면 소스에서 빌드)
+#   코드 변경 후: docker compose up --build -d
+#   IDE에서 API를 실행할 때: docker compose up -d postgres redis
 #   종료: docker compose down        (데이터 유지)
 #   초기화: docker compose down -v   (DB 볼륨까지 삭제 → 다음 실행 때 Flyway가 처음부터 다시 적용)
 services:
+  api:
+    build:
+      context: .
+    init: true
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    environment:
+      # local 시드·개발용 헤더 인증을 사용할 수 있게 하되, 기본 인증은 FE용 세션이다.
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nerdnam
+      SPRING_DATASOURCE_USERNAME: nerdnam
+      SPRING_DATASOURCE_PASSWORD: nerdnam
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NERDNAM_AUTH_MODE: ${NERDNAM_AUTH_MODE:-session}
+      NERDNAM_AUTH_WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      NERDNAM_AUTH_LOGIN_SUCCESS_URL: ${WEB_ORIGIN:-http://localhost:3000}/
+      NERDNAM_AUTH_LOGIN_FAILURE_URL: ${WEB_ORIGIN:-http://localhost:3000}/?login=failed
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-not-configured}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-not-configured}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-not-configured}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-not-configured}
+      # Next.js를 거쳐도 콜백은 브라우저에서 접속할 수 있는 BE 주소로 고정한다.
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_GOOGLE_REDIRECT_URI: ${API_PUBLIC_URL:-http://localhost:${API_PORT:-8080}}/login/oauth2/code/google
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KAKAO_REDIRECT_URI: ${API_PUBLIC_URL:-http://localhost:${API_PORT:-8080}}/login/oauth2/code/kakao
+      # true면 AI 레포·GPU 없이 동작. false면 호스트의 FastAPI에 HTTP로 연결한다.
+      NERDNAM_AI_STUB: ${NERDNAM_AI_STUB:-true}
+      NERDNAM_AI_BASE_URL: ${NERDNAM_AI_BASE_URL:-http://host.docker.internal:8000}
+      LOGGING_LEVEL_ORG_HIBERNATE_SQL: INFO
+      LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND: INFO
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg17
     container_name: nerdnam-postgres
@@ -11,7 +51,7 @@ services:
       POSTGRES_USER: nerdnam
       POSTGRES_PASSWORD: nerdnam
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - nerdnam-pg:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +64,12 @@ services:
     image: redis:7.4-alpine
     container_name: nerdnam-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   nerdnam-pg:

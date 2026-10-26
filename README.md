@@ -10,13 +10,24 @@ nerdnam(AI 맞춤형 지원서 코치)의 API 서버입니다. 기획서 5장의
 
 ## 빠른 시작
 
+Docker와 Docker Compose만 있으면 됩니다. Java·Gradle은 이미지 안에서 실행합니다.
+
 ```bash
-docker compose up -d     # PostgreSQL(pgvector) + Redis
-./gradlew test           # 테스트 (Docker 필요. 없으면 NERDNAM_TEST_USE_LOCAL_DB=true → 05 문서)
-./gradlew bootRun        # http://localhost:8080/actuator/health
+docker compose up       # API(8080) + PostgreSQL(pgvector, 5432) + Redis(6379)
+# 다른 터미널에서
+curl http://localhost:8080/actuator/health   # {"status":"UP"}
 ```
 
-처음이라면 [05 로컬 환경 셋업](docs/05-로컬-환경-셋업.md)부터 보세요.
+첫 실행에는 이미지·의존성을 내려받아 빌드합니다. 기본값은 **세션 인증 + AI 스텁**입니다. AI 레포·GPU·소셜 로그인 키가 없어도 서버는 시작하지만, 실제 로그인에는 각 제공자의 키가 필요합니다.
+
+- 소셜 로그인: `.env.example`을 `.env`로 복사해 키를 입력한 뒤 `docker compose up -d`. **기존 `.env`는 덮어쓰지 마세요.** Compose가 `.env` 값을 API 컨테이너에 전달합니다.
+- FE: `API_ORIGIN=http://localhost:8080`. 로그인 전 `/api/me`의 401은 정상입니다.
+- 로그인 없이 API 테스트: `NERDNAM_AUTH_MODE=header docker compose up -d api` 후 `curl -H 'X-Member-Id: 1' http://localhost:8080/api/me`. FE 소셜 로그인은 `session` 모드를 사용합니다.
+- 코드 변경 반영: `docker compose up --build -d`. 환경변수 변경 반영: `docker compose up -d` (`restart`만으로는 새 값이 적용되지 않음).
+- 종료: `docker compose down`. DB 볼륨은 유지되고 Redis 세션은 컨테이너 재생성 시 사라집니다.
+- IntelliJ 개발: `docker compose stop api` 후 `docker compose up -d postgres redis`. 로컬 Java 21로 `./gradlew bootRun` 또는 IDE에서 실행합니다.
+
+소셜 콜백·포트 변경·호스트 AI 연결·문제 해결은 [11 Docker Compose 실행](docs/11-Docker-Compose-실행.md)을 보세요. IDE 개발 환경은 [05 로컬 환경 셋업](docs/05-로컬-환경-셋업.md)에 있습니다.
 
 ## 기술 구성
 
