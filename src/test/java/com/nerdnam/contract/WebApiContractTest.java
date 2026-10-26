@@ -176,6 +176,64 @@ class WebApiContractTest extends ApiTestSupport {
         assertThat(parameter.toString()).as("경로의 tab 설명").contains("motive");
     }
 
+    /**
+     * 계약 예시는 <b>웹 목업 서버(Prism)가 그대로 응답</b>한다 (FE-03, 기획서 v1.40). 그래서 예시가 실제 서버가
+     * 주지 않는 조합이면 FE 화면이 막힌다 — 예를 들어 분석 중(`in_progress`)인데 한 줄 진단·판정이 채워져
+     * 있으면 S08 이 로딩에서 멈춘 채 리포트를 못 보여 준다. 끝난 상태 예시는 몸통이 채워져 있어야 하고,
+     * 진행 중 예시는 비어 있어야 한다.
+     */
+    @Test
+    void 계약_예시의_상태와_몸통이_서로_맞는다() throws Exception {
+        JsonNode examples = YAML.readTree(Files.readString(COPY)).path("components").path("examples");
+        List<String> wrong = new java.util.ArrayList<>();
+        examples.properties().forEach(entry -> {
+            JsonNode value = entry.getValue().path("value");
+            JsonNode body = value.isArray() && !value.isEmpty() ? value.get(0) : value;
+            String status = body.path("status").asString("");
+            if (status.isEmpty()) {
+                return;
+            }
+            boolean done = List.of("completed", "confirmed", "review").contains(status);
+            boolean filled = List.of("diagnosis", "matches", "content", "episodes", "requiredMet", "generationNo")
+                    .stream().anyMatch(field -> {
+                        JsonNode node = body.path(field);
+                        return !node.isMissingNode() && !node.isNull() && !node.isEmpty();
+                    });
+            if (!done && filled) {
+                wrong.add("%s: %s 인데 몸통이 채워져 있다".formatted(entry.getKey(), status));
+            }
+            JsonNode completedAt = body.path("completedAt");
+            if (done && !completedAt.isMissingNode() && completedAt.isNull()) {
+                wrong.add("%s: %s 인데 completedAt 이 없다".formatted(entry.getKey(), status));
+            }
+            if (!done && completedAt.isValueNode() && !completedAt.isNull()) {
+                wrong.add("%s: %s 인데 completedAt 이 있다".formatted(entry.getKey(), status));
+            }
+        });
+        assertThat(wrong).as("예시의 상태와 몸통이 어긋났어요 (WebApiContractDocument.EXAMPLE_STATUS 를 보세요)")
+                .isEmpty();
+    }
+
+    /** 모든 2xx 응답 본문에 예시가 있어야 목업이 쓸 만하다 (FE-03) */
+    @Test
+    void 본문이_있는_모든_응답에_예시가_있다() throws Exception {
+        JsonNode contract = YAML.readTree(Files.readString(COPY));
+        List<String> missing = new java.util.ArrayList<>();
+        contract.path("paths").properties().forEach(path -> path.getValue().properties().forEach(method -> {
+            method.getValue().path("responses").properties().forEach(response -> {
+                if (!response.getKey().startsWith("2")) {
+                    return;
+                }
+                JsonNode body = response.getValue().path("content").path("application/json");
+                if (!body.isMissingNode() && body.path("examples").isMissingNode()
+                        && body.path("example").isMissingNode()) {
+                    missing.add(method.getKey() + " " + path.getKey() + " " + response.getKey());
+                }
+            });
+        }));
+        assertThat(missing).as("웹 목업(Prism)이 응답할 예시가 없어요").isEmpty();
+    }
+
     /** 짧은 스키마 이름에서 Java 타입을 찾는다 (계약에 적어 둔 x-java-class) */
     private static Class<?> javaType(JsonNode schema) {
         JsonNode name = schema.path("x-java-class");

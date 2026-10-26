@@ -28,6 +28,28 @@ FE가 C-03 v0.1.0을 보고 요청한 3가지를 모두 고쳤고, 확인받은 
 | `WritingGuideApiTest` | 실제 응답의 `tab`이 `motive`이고 `path`가 없는지 |
 | `JsonValueCaseTest.분석하지_않은_공고도_키는_모두_주고_없는_값만_null이다` | 실제 응답에서 "키는 있고 값만 null"이 깨지는 것 |
 
+## 예시 응답과 웹 목업 (FE-03, 기획서 v1.40)
+
+**웹 목업 서버(Prism)가 이 계약의 예시를 그대로 응답한다.** 그래서 예시는 FE 의 개발용 데이터이고, 실제 서버가 주지 않는 조합이면 화면이 막힌다.
+
+실제로 어긋나 있던 것 (2026-10-26에 고침, v0.1.3):
+
+| 예시 | 문제 | FE 에 생기던 일 |
+| --- | --- | --- |
+| `FitReportView` | `status: in_progress` 인데 한 줄 진단·판정이 채워짐 | S08 이 "분석 중" 로딩에서 멈춘 채 리포트를 못 보여 준다 |
+| `PostingSummary` | `status: in_progress` 인데 충족 수가 채워짐 | S10 카드가 전부 "분석 중"으로 보인다 |
+| `Guide` | `status: generating` 인데 `content` 가 채워짐 | S09 탭이 "만드는 중"에서 멈춘다 |
+| `Review` | `status: draft` 인데 `episodes` 가 채워짐 | 초안이면 실제로는 사례가 비어 있다 |
+
+원인은 예시 생성기가 **enum 의 첫 값**을 쓴 것이다(`in_progress`·`generating`·`draft`가 첫 값). 몸통이 채워진 예시는 끝난 상태로 맞추도록 `WebApiContractDocument.EXAMPLE_STATUS` 에 적어 두었고, `completedAt` 도 그에 맞춰 시각이 들어간다.
+
+| 테스트 | 막는 것 |
+| --- | --- |
+| `WebApiContractTest.계약_예시의_상태와_몸통이_서로_맞는다` | 상태와 몸통이 다시 어긋나는 것 (새 상태 필드가 생겨도 잡는다) |
+| `WebApiContractTest.본문이_있는_모든_응답에_예시가_있다` | 목업이 응답할 예시가 빠지는 것 |
+
+예시 값은 가상 데이터다(회원 id 1, "예시 회사"). E2E 는 `fixtures/` 를 웹 계약 모양으로 바꿔 쓴다 (FE-17).
+
 ## 계약 갱신과 테스트
 
 ```bash
