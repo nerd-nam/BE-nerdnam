@@ -43,7 +43,7 @@ final class WebApiContractDocument {
 
     private void metadata() {
         document.put("openapi", "3.1.0");
-        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.2")
+        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.3")
                 .put("description", """
                         C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
                         JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -55,6 +55,8 @@ final class WebApiContractDocument {
                         이때 내 정보 조회·동의·탈퇴·로그아웃·CSRF 준비만 가능하다.
                         AI 작업은 202 + jobId를 받고 GET /api/ai-jobs/{jobId}를 폴링한다. 웹으로 SSE를 보내지 않는다.
                         예시는 형식 확인용 가상 데이터이며 실제 회원·작업 id가 아니다.
+                        웹 목업 서버(Prism)가 이 예시로 응답하므로 상태 값과 몸통이 서로 맞게 맞춰 둔다.
+                        끝난 상태 예시는 결과가 채워져 있고, 진행 중 예시는 비어 있다.
                         응답은 값이 null이어도 키를 남기므로 모든 응답 필드가 required다.
                         그중 값이 null일 수 있는 것만 anyOf로 null을 함께 적는다. 꼭 있는 값에는 null이 없다.
                         스키마 이름은 짧은 Java 타입 이름이고, 원래 타입은 x-java-class에 남긴다(웹은 x- 확장을 무시한다).
@@ -257,10 +259,42 @@ final class WebApiContractDocument {
             JsonNode schema = value.path("schema");
             String name = schema.has("$ref") ? schema.path("$ref").asString().substring("#/components/schemas/".length()) : fallbackName;
             if (!examples.has(name)) {
-                examples.putObject(name).put("summary", "형식 확인용 예시").set("value", sample(schema, "", 0));
+                examples.putObject(name).put("summary", "형식 확인용 예시")
+                        .set("value", consistentStatus(schema, sample(schema, "", 0)));
             }
             value.putObject("examples").putObject("sample").put("$ref", "#/components/examples/" + name);
         });
+    }
+
+    /**
+     * 상태 값은 enum 의 첫 값이라 몸통과 어긋날 수 있다. 예를 들어 {@code FitReportView} 는 분석 중이면
+     * 충족 수·한 줄 진단·판정이 비는데(실제 응답), 예시는 {@code in_progress} 에 그 값들이 채워져 나왔다.
+     * 웹 목업(Prism)이 이 예시를 그대로 응답하므로(FE-03, 기획서 v1.40) 화면이 "분석 중"에서 멈춘다.
+     * 그래서 <b>몸통이 채워진 예시는 끝난 상태로</b> 맞춘다.
+     */
+    private static final Map<String, String> EXAMPLE_STATUS = Map.of(
+            "com.nerdnam.matching.application.FitReportView", "completed",
+            "com.nerdnam.matching.application.FitReportQuery.AnalysisSummary", "completed",
+            "com.nerdnam.matching.application.PostingListQuery.PostingSummary", "completed",
+            "com.nerdnam.guide.application.GuideViews.Guide", "completed",
+            "com.nerdnam.guide.application.GuideViews.TabStatus", "completed",
+            "com.nerdnam.project.application.ProjectViews.Review", "review");
+
+    private JsonNode consistentStatus(JsonNode schema, JsonNode value) {
+        // 목록 응답(배열)은 요소 스키마로 찾고 요소마다 맞춘다
+        if (value instanceof ArrayNode array) {
+            array.forEach(element -> consistentStatus(schema.path("items"), element));
+            return array;
+        }
+        String reference = schema.path("$ref").asString("");
+        if (reference.isEmpty() || !(value instanceof ObjectNode object) || !object.has("status")) {
+            return value;
+        }
+        String status = EXAMPLE_STATUS.get(reference.substring(reference.lastIndexOf('/') + 1));
+        if (status != null) {
+            object.put("status", status);
+        }
+        return value;
     }
 
     private JsonNode sample(JsonNode schema, String field, int depth) {
@@ -271,7 +305,9 @@ final class WebApiContractDocument {
             return sample(document.at(schema.path("$ref").asString().substring(1)), field, depth + 1);
         }
         if (schema.has("anyOf")) {
-            if (List.of("runningJobId", "failureCode", "resultId", "completedAt", "finishedAt", "feedback", "reviewingProjectId").contains(field)) {
+            // completedAt 은 끝난 상태 예시(위 EXAMPLE_STATUS)에서 시각이 있어야 앞뒤가 맞는다.
+            // finishedAt·resultId 는 AiJobView 예시가 in_progress 라서 null 이 맞다.
+            if (List.of("runningJobId", "failureCode", "resultId", "finishedAt", "feedback", "reviewingProjectId").contains(field)) {
                 return json.nullNode();
             }
             return sample(schema.path("anyOf").get(0), field, depth + 1);
