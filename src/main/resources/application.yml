@@ -82,14 +82,30 @@ nerdnam:
     stub: false                       # true 면 AI 서버 대신 고정 응답 스텁 (local 프로필은 true)
     connect-timeout: 2s               # 연결 시간 제한. GPU 서버가 꺼져 있으면 빨리 실패하도록 짧게 (ADR-0001)
     read-timeout: 30s                 # 응답 시간 제한 기본값 (아래 목록에 없는 엔드포인트)
-    read-timeouts:                    # 엔드포인트별 응답 시간 제한 — 성능 목표의 약 2배 (기획서 5.5)
+    # 엔드포인트별 응답 시간 제한. 읽기 시간 초과는 다시 시도하지 않으므로(기획서 v1.28) 그 작업은 바로 실패한다.
+    #
+    # 처음에는 "성능 목표의 약 2배"(기획서 5.5)로 잡았는데, AI 서빙이 AWS Bedrock 으로 바뀌면서(ADR-0007)
+    # **계정 호출 한도(ThrottlingException)에 걸리면 AI 서버가 기다렸다 다시 보낸다**. 그래서 한가할 때와
+    # 몰릴 때의 차이가 크다. 2026-10-27 로컬 실측(Nova 2 Lite + Titan V2, 서울 리전):
+    #
+    #   엔드포인트                한가할 때     몰릴 때(한도)      전 설정   지금
+    #   /embed 32건(배치)         0.6초        19~34초           10초 →   60초
+    #   /embed 1건(질의)          0.4~1.5초    —                        (같은 값을 쓴다)
+    #   /requirements/extract     8.6초        —                 20초 →   60초
+    #   /match 요건 20개          9.3초        41~63초           30초 →   120초
+    #   /restructure              2.4초        —                 30초     (그대로)
+    #
+    # 몰릴 때 값이 제한을 넘어 실제로 분석이 TIMEOUT·GPU_UNAVAILABLE 로 실패했다 (BE 로그 2026-10-27).
+    # 근본 해결은 AI 쪽 동시 호출 상한과 계정 한도 상향이다 (AI-nerdnam#32) — 그게 들어오면 다시 줄인다.
+    # GPU 서버 시절 숫자가 아니므로 성능 목표(재구성 15초·리포트 20초·방향성 60초)와 혼동하지 말 것.
+    read-timeouts:
       health: 2s
-      embed: 10s
-      requirements-extract: 20s       # 리포트 20초 안의 한 단계
-      restructure: 30s                # 재구성 목표 15초
-      match: 30s                      # 리포트 목표 20초
-      gap-guide: 20s                  # 실패하면 기본 문구로 대신한다 (ADR-0003)
-      guide: 120s                     # 작성 방향 목표 60초
+      embed: 60s                      # 배치 32건이 한도에 걸리면 19~34초 (전 10초로는 반드시 터진다)
+      requirements-extract: 60s       # 한가할 때 8.6초. 리포트의 한 단계지만 한도에 걸리면 길어진다
+      restructure: 30s                # 한가할 때 2.4초 — 목표 15초의 2배를 유지
+      match: 120s                     # 요건마다 LLM 을 병렬로 불러 한도에 가장 잘 걸린다 (41~63초 실측)
+      gap-guide: 60s                  # 실패하면 기본 문구로 대신한다 (ADR-0003). match 와 같은 구조라 함께 올림
+      guide: 180s                     # 작성 방향 목표 60초. 탭 5개를 한꺼번에 만들면 한도에 걸린다 (기획서 v1.59)
   ai-job:
     sync: false                       # true 면 AI 작업을 요청 스레드에서 바로 실행 (테스트용)
     stale-after: 10m                  # 이보다 오래 진행 중인 작업은 실패(TIMEOUT)로 정리
