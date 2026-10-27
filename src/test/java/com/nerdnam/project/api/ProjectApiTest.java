@@ -172,14 +172,23 @@ class ProjectApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.episodes[1].currentVersion").value(3))
                 .andExpect(jsonPath("$.episodes[1].title").value("부하 테스트 절차 도입"));
 
+        // "이 버전에서 이어서 하기" — 새 버전을 만들지 않고 쓰는 버전만 v1 로 바꾼다 (BE #29)
         postJson(member, """
                 {"versionNo": 1}
                 """, "/api/projects/{id}/episodes/{e}/restore", project, second)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.episodes[1].currentVersion").value(4))
-                .andExpect(jsonPath("$.episodes[1].versions[3].changeType").value("restored"))
-                .andExpect(jsonPath("$.episodes[1].versions[3].restoredFrom").value(1))
+                .andExpect(jsonPath("$.episodes[1].currentVersion").value(1))
+                .andExpect(jsonPath("$.episodes[1].versions", hasSize(3)))
                 .andExpect(jsonPath("$.episodes[1].clarifications", hasSize(1)));
+
+        // 그 버전에서 고치면 가장 큰 번호 다음(v4)으로 쌓인다
+        putJson(member, """
+                {"title": "v1 에서 이어서 고침", "role": "절차 설계", "problem": "문제", "solution": "해결", "result": "결과"}
+                """, "/api/projects/{id}/episodes/{e}", project, second)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.episodes[1].currentVersion").value(4))
+                .andExpect(jsonPath("$.episodes[1].versions", hasSize(4)))
+                .andExpect(jsonPath("$.episodes[1].title").value("v1 에서 이어서 고침"));
 
         postJson(member, """
                 {"title": "AI 가 놓친 사례", "problem": "p", "solution": "s", "result": "r"}

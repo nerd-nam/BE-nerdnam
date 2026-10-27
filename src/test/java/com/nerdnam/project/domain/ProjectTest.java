@@ -156,18 +156,42 @@ class ProjectTest {
         }
 
         @Test
-        void 이_버전으로_바꾸기는_고른_버전을_복사한_새_버전이고_상태는_그대로다_P6() {
+        void 이_버전에서_이어서_하기는_새_버전을_만들지_않고_쓰는_버전만_바꾼다_P6() {
             Project project = reviewing(content("사례", question("q1")));
             Episode episode = project.reviewEpisodes().getFirst();
-            project.dropClarification(episode.getId(), "q1");
+            project.dropClarification(episode.getId(), "q1");   // v2 (질문 빠짐)
 
             project.restoreVersion(episode.getId(), 1);
 
-            assertThat(episode.getCurrentVersion()).isEqualTo(3);
-            assertThat(episode.current().getChangeType()).isEqualTo(ChangeType.RESTORED);
-            assertThat(episode.current().getRestoredFrom()).isEqualTo(1);
+            // 버전은 늘지 않고 v1 을 다시 쓴다 (BE #29)
+            assertThat(episode.getVersions()).extracting(EpisodeVersion::getVersionNo).containsExactly(1, 2);
+            assertThat(episode.getCurrentVersion()).isEqualTo(1);
+            assertThat(episode.current().getChangeType()).isNotEqualTo(ChangeType.RESTORED);
+            // 그 버전의 확인 질문이 함께 되살아난다 (복사하던 때와 같다)
             assertThat(episode.current().content().clarifications()).extracting(Clarification::key).containsExactly("q1");
             assertThat(episode.getStatus()).isEqualTo(EpisodeStatus.REVIEW);
+        }
+
+        /**
+         * 이전 버전을 쓰다 고치면 번호가 겹칠 수 있다 — 새 번호는 "지금 버전 + 1"이 아니라
+         * <b>가장 큰 번호 + 1</b>이어야 한다 (BE #29). 겹치면 {@code uk_episode_version} 위반이다.
+         */
+        @Test
+        void 이전_버전에서_이어서_고치면_가장_큰_번호_다음으로_쌓인다_P5() {
+            Project project = reviewing();
+            Episode episode = project.reviewEpisodes().getFirst();
+            project.applyRevision(episode.getId(), content("v2 내용"), SKILLS, TRACE, "더 짧게");
+            project.applyRevision(episode.getId(), content("v3 내용"), SKILLS, TRACE, "더 길게");
+
+            project.restoreVersion(episode.getId(), 1);
+            assertThat(episode.getCurrentVersion()).isEqualTo(1);
+
+            project.editEpisode(episode.getId(), new EpisodeEdit("v1 에서 이어서 고침", null, "문제", "해결", "결과", null));
+
+            assertThat(episode.getCurrentVersion()).isEqualTo(4);
+            assertThat(episode.getVersions()).extracting(EpisodeVersion::getVersionNo).containsExactly(1, 2, 3, 4);
+            assertThat(episode.current().getTitle()).isEqualTo("v1 에서 이어서 고침");
+            assertThat(episode.version(2).getTitle()).isEqualTo("v2 내용");   // 기존 버전은 그대로
         }
 
         @Test
