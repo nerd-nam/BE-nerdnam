@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.nerdnam.infra.ai.Embeddings;
+import com.nerdnam.infra.ai.StubAiServerClient;
 import com.nerdnam.support.ApiTestSupport;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -31,7 +33,7 @@ class ChunkRegistrationTest extends ApiTestSupport {
         assertThat(chunks(member)).extracting(Chunk::type).containsExactlyInAnyOrder("SKILL", "CAREER");
         assertThat(chunks(member)).allSatisfy(c -> {
             assertThat(c.status()).isEqualTo("READY");
-            assertThat(c.model()).isEqualTo("stub-embedding:768");
+            assertThat(c.model()).isEqualTo(StubAiServerClient.MODEL);
         });
         assertThat(chunk(member, "SKILL").content()).contains("기술: Redis", "사용처: OO커머스 경력");
         assertThat(chunk(member, "CAREER").content()).contains("경력: OO커머스", "사용 기술: Redis");
@@ -50,7 +52,7 @@ class ChunkRegistrationTest extends ApiTestSupport {
         assertThat(chunk(member, "SKILL").content()).contains("결제 승인 API 성능 개선 프로젝트");
         Integer dims = jdbc.sql("SELECT vector_dims(embedding) FROM rag.chunk WHERE member_id = :m AND chunk_type = 'EPISODE'")
                 .param("m", member).query(Integer.class).single();
-        assertThat(dims).isEqualTo(768);
+        assertThat(dims).isEqualTo(Embeddings.DIMENSIONS);   // DB 열과 같은 차원 (ADR-0007)
     }
 
     @Test

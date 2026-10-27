@@ -63,6 +63,16 @@ public class ChunkEmbedder {
                     log.info("AI server returned stub embeddings; chunks of member {} stay PENDING", memberId);
                     break;
                 }
+                // 차원이 DB 열과 다르면 저장할 수 없다. 넣으려 하면 pgvector 가 SQL 에서 거절해
+                // 원인이 안 보이므로(이슈 #31) 여기서 멈추고 무엇이 어긋났는지 남긴다.
+                // 임베딩 모델을 바꾸면서 마이그레이션을 빠뜨렸을 때 생긴다
+                if (embeddings.wrongDimensions()) {
+                    log.error("AI server returned {}-dimension vectors but rag.chunk.embedding is vector({})"
+                                    + " (model {}); chunks of member {} stay PENDING."
+                                    + " Run the dimension migration and re-embed",
+                            embeddings.dimensionsText(), Embeddings.DIMENSIONS, embeddings.embeddingModel(), memberId);
+                    break;
+                }
                 int marked = 0;
                 for (int i = 0; i < batch.size(); i++) {
                     if (store.markReady(batch.get(i).id(), batch.get(i).content(), embeddings.vectors().get(i),

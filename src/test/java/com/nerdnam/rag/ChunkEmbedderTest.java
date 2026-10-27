@@ -48,11 +48,34 @@ class ChunkEmbedderTest {
         when(store.pending(7L, 32))
                 .thenReturn(List.of(new Pending(1, "Redis", "a"), new Pending(2, null, "b")), List.of());
         when(ai.embed(List.of(new EmbedItem("a", "Redis"), new EmbedItem("b", null)), EmbedPurpose.DOCUMENT))
-                .thenReturn(new Embeddings(List.of(new float[] {1}, new float[] {2}), "model:768"));
+                .thenReturn(new Embeddings(List.of(vector(1), vector(2)), "model:1024"));
         when(store.markReady(anyLong(), anyString(), any(), anyString())).thenReturn(true);
 
         assertThat(embedder.embedPending(7L)).isEqualTo(2);
-        verify(store).markReady(eq(2L), eq("b"), any(), eq("model:768"));
+        verify(store).markReady(eq(2L), eq("b"), any(), eq("model:1024"));
+    }
+
+    /**
+     * 차원이 DB 열과 다른 벡터는 저장하지 않는다 (이슈 #31). 넣으려 하면 pgvector 가 SQL 에서
+     * "different vector dimensions" 로 거절해 작업이 {@code internal} 로만 실패하고 원인이 안 보인다.
+     * 임베딩 모델을 바꾸면서 마이그레이션을 빠뜨리면 이 상태가 된다.
+     */
+    @Test
+    void 차원이_다른_벡터는_저장하지_않고_대기로_둔다() {
+        when(store.pending(7L, 32)).thenReturn(List.of(new Pending(1, "Redis", "a")), List.of());
+        float[] 짧은_벡터 = new float[Embeddings.DIMENSIONS - 1];
+        when(ai.embed(List.of(new EmbedItem("a", "Redis")), EmbedPurpose.DOCUMENT))
+                .thenReturn(new Embeddings(List.of(짧은_벡터), "amazon.titan-embed-text-v2:0:512"));
+
+        assertThat(embedder.embedPending(7L)).isZero();
+        verify(store, never()).markReady(anyLong(), anyString(), any(), anyString());
+    }
+
+    /** DB 열과 같은 차원의 벡터. 첫 칸만 값을 넣는다 (내용은 이 테스트에서 중요하지 않다) */
+    private static float[] vector(float first) {
+        float[] v = new float[Embeddings.DIMENSIONS];
+        v[0] = first;
+        return v;
     }
 
     /** AI 서버가 가짜 응답(stub) 모드면 벡터를 저장하지 않고 PENDING 으로 둔다 (기획서 5.5) */
