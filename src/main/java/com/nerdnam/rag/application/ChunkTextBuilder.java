@@ -20,7 +20,8 @@ import java.util.Set;
 public final class ChunkTextBuilder {
 
     private static final Map<String, String> CATEGORY = Map.of(
-            "LANGUAGE", "언어", "FRAMEWORK", "프레임워크", "DATABASE", "DB", "INFRA", "인프라", "TOOL", "협업 도구");
+            "LANGUAGE", "언어", "FRAMEWORK", "프레임워크", "DATABASE", "DB", "INFRA", "인프라", "TOOL", "협업 도구",
+            "ETC", "기타");
     private static final Map<String, String> EMPLOYMENT = Map.of(
             "FULL_TIME", "정규직", "CONTRACT", "계약직", "INTERN", "인턴", "FREELANCE", "프리랜서");
     /** 숙련도 이름과 기준 문장 (profile 의 Proficiency 와 같은 문장, 기획서 4.1) */

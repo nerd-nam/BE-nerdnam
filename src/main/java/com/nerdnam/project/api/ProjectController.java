@@ -225,7 +225,7 @@ public class ProjectController {
 
     public record NewSkillRequest(
             @NotBlank(message = "기술 이름을 입력해 주세요.") @Size(max = 100) String name,
-            @NotNull(message = "카테고리를 골라 주세요.") SkillCategory category) {
+            SkillCategory category) {   // 비우면 ETC(기타). 웹에 고르는 칸이 없다 (이슈 #33)
     }
 
     public record FeedbackRequest(@NotBlank(message = "피드백을 입력해 주세요.") @Size(max = 2000) String feedback) {

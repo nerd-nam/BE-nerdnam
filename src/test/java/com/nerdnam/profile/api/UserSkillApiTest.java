@@ -49,22 +49,29 @@ class UserSkillApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.level").value(3));
     }
 
+    /**
+     * 사전에 없는 기술은 <b>카테고리를 비워 보내면 {@code etc}(기타)로</b> 등록된다 (이슈 #33).
+     * 웹에 카테고리를 고르는 칸이 없어서다(사용자 결정 2026-10-27). 카테고리를 보내면 그 값을 쓴다.
+     */
     @Test
-    void 사전에_없는_기술은_카테고리가_있어야_추가되고_자동완성에는_나오지_않는다() throws Exception {
+    void 사전에_없는_기술은_카테고리를_비우면_기타로_추가되고_자동완성에는_나오지_않는다() throws Exception {
         Long member = newMember();
         String name = unique("Spring Cloud Gateway");
 
         add(member, """
                 {"name": "%s"}
                 """.formatted(name))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("INVALID_INPUT"));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value(name))
+                .andExpect(jsonPath("$.category").value("etc"))
+                .andExpect(jsonPath("$.level").value(1));
 
+        // 한 번 등록된 뒤에는 사전에 있는 기술이므로 보낸 카테고리를 쓰지 않는다 (etc 가 유지된다)
         add(member, """
                 {"name": "%s", "category": "FRAMEWORK"}
                 """.formatted(name))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(name));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value("etc"));
 
         mvc.perform(get("/api/skills").param("query", name))
                 .andExpect(jsonPath("$[*].name", not(hasItem(name))));

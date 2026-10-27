@@ -56,9 +56,8 @@ public class Skill extends BaseTimeEntity {
 
     /** 사전에 없는 기술을 사용자가 추가할 때. 이름은 사용자가 쓴 그대로(앞뒤 공백만 제거) 표시한다 */
     public static Skill userAdded(String rawName, SkillCategory category) {
-        if (category == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT, "사전에 없는 기술이에요. 카테고리를 골라 주세요.");
-        }
+        // 카테고리를 비워 보내면 ETC(기타)로 등록한다 — 웹에 고르는 칸이 없다 (이슈 #33)
+        SkillCategory chosen = category == null ? SkillCategory.ETC : category;
         String name = rawName == null ? "" : rawName.strip();
         if (name.isEmpty() || name.length() > MAX_NAME_LENGTH) {
             throw new BusinessException(ErrorCode.INVALID_INPUT, "기술명은 1~" + MAX_NAME_LENGTH + "자로 입력해 주세요.");
@@ -66,7 +65,7 @@ public class Skill extends BaseTimeEntity {
         Skill skill = new Skill();
         skill.name = name;
         skill.nameKey = SkillNameKey.of(name).value();
-        skill.category = category;
+        skill.category = chosen;
         skill.status = SkillStatus.USER_ADDED;
         return skill;
     }
