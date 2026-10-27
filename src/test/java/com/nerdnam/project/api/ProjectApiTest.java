@@ -399,11 +399,13 @@ class ProjectApiTest extends ApiTestSupport {
         Long project = createProject(member, "본문");
         String name = unique("NewTool");
 
+        // 카테고리를 보내지 않는다 — 웹에 고르는 칸이 없어 etc(기타)로 등록된다 (이슈 #33)
         Long userSkillId = readLong(postJson(member, """
-                {"name": "%s", "category": "TOOL"}
+                {"name": "%s"}
                 """.formatted(name), "/api/projects/{id}/skills", project)
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.proficiency").value("learning")), "$.id");
+                .andExpect(jsonPath("$.proficiency").value("learning"))
+                .andExpect(jsonPath("$.category").value("etc")), "$.id");
 
         getJson(member, "/api/projects/{id}", project)
                 .andExpect(jsonPath("$.skills[?(@.name == '%s')].userSkillId".formatted(name)).value(userSkillId.intValue()));

@@ -43,7 +43,7 @@ final class WebApiContractDocument {
 
     private void metadata() {
         document.put("openapi", "3.1.0");
-        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.5")
+        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.6")
                 .put("description", """
                         C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
                         JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -467,6 +467,20 @@ final class WebApiContractDocument {
         }
         if (path.equals("/api/projects/{projectId}") && method.equals("delete")) {
             return "초안·검토·확정·재등록 중 모두 삭제할 수 있다. 해당 프로젝트 재구성 작업 중에는 409 AI_JOB_RUNNING과 runningJobId를 준다. 청크·벡터도 같은 트랜잭션에서 삭제한다. 이전 리포트·작성 방향은 이름과 deleted=true 표시를 남긴다.";
+        }
+        if (path.equals("/api/skills")) {
+            return "표준 기술 사전 자동완성. query 가 비어 있으면 빈 배열이다 — category 만으로 그 카테고리의 "
+                    + "전체 목록을 주지는 않는다 (웹이 카테고리 탭을 없애 쓰지 않는다, BE #33). "
+                    + "사용자가 추가한 기술(user_added)은 공용 사전이 아니라서 결과에 넣지 않는다.";
+        }
+        if (path.equals("/api/me/skills") && method.equals("post")) {
+            return "사전에 있는 기술이면 category 를 보내도 사전 값을 쓴다. 사전에 없는 기술은 그 이름으로 새로 등록하는데, "
+                    + "category 를 비워 보내면 etc(기타)가 된다 — 웹에 카테고리를 고르는 칸이 없다 (BE #33). "
+                    + "level 을 비우면 1(학습 중)이다. 이미 가진 기술이면 200 으로 그 기술을 돌려준다.";
+        }
+        if (path.endsWith("/skills") && method.equals("post")) {
+            return "프로젝트에 쓸 기술을 추가한다. 사전에 없는 이름이면 기술스택에 학습 중으로 만들어 연결하고, "
+                    + "category 를 비워 보내면 etc(기타)로 등록한다 (BE #33).";
         }
         if (path.endsWith("/restore")) {
             return "이 버전에서 이어서 하기 — 새 버전을 만들지 않고 사례의 currentVersion 만 고른 버전으로 바꾼다. "

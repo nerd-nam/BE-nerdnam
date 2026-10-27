@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: "nerdnam 웹 API"
-  version: "0.1.5"
+  version: "0.1.6"
   description: |
     C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
     JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -1086,7 +1086,7 @@ paths:
       security:
       - cookieSession: []
         csrfToken: []
-      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+      description: "사전에 있는 기술이면 category 를 보내도 사전 값을 쓴다. 사전에 없는 기술은 그 이름으로 새로 등록하는데, category 를 비워 보내면 etc(기타)가 된다 — 웹에 카테고리를 고르는 칸이 없다 (BE #33). level 을 비우면 1(학습 중)이다. 이미 가진 기술이면 200 으로 그 기술을 돌려준다."
   /api/me/skills/{userSkillId}:
     delete:
       operationId: "UserSkillController_delete"
@@ -2193,7 +2193,7 @@ paths:
       security:
       - cookieSession: []
         csrfToken: []
-      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+      description: "프로젝트에 쓸 기술을 추가한다. 사전에 없는 이름이면 기술스택에 학습 중으로 만들어 연결하고, category 를 비워 보내면 etc(기타)로 등록한다 (BE #33)."
   /api/projects/{projectId}/split:
     post:
       operationId: "ProjectController_split"
@@ -2255,6 +2255,7 @@ paths:
           - "database"
           - "infra"
           - "tool"
+          - "etc"
       responses:
         "200":
           content:
@@ -2286,7 +2287,7 @@ paths:
       summary: "기술 사전 — 자동완성"
       security:
       - cookieSession: []
-      description: "세부 상태 규칙은 C-02 화면별 API 목록과 BE docs/02를 따른다. 변경 요청은 세션 쿠키와 CSRF 헤더를 함께 보낸다."
+      description: "표준 기술 사전 자동완성. query 가 비어 있으면 빈 배열이다 — category 만으로 그 카테고리의 전체 목록을 주지는 않는다 (웹이 카테고리 탭을 없애 쓰지 않는다, BE #33). 사용자가 추가한 기술(user_added)은 공용 사전이 아니라서 결과에 넣지 않는다."
   /api/auth/logout:
     post:
       operationId: "logout"
@@ -3472,6 +3473,7 @@ components:
             - "database"
             - "infra"
             - "tool"
+            - "etc"
           - type: "null"
         level:
           anyOf:
@@ -3510,6 +3512,7 @@ components:
           - "database"
           - "infra"
           - "tool"
+          - "etc"
         id:
           type: "integer"
           format: "int64"
@@ -3542,6 +3545,7 @@ components:
           - "database"
           - "infra"
           - "tool"
+          - "etc"
         id:
           type: "integer"
           format: "int64"
@@ -3692,20 +3696,22 @@ components:
       type: "object"
       properties:
         category:
-          type: "string"
-          enum:
-          - "language"
-          - "framework"
-          - "database"
-          - "infra"
-          - "tool"
+          anyOf:
+          - type: "string"
+            enum:
+            - "language"
+            - "framework"
+            - "database"
+            - "infra"
+            - "tool"
+            - "etc"
+          - type: "null"
         name:
           type: "string"
           maxLength: 100
           minLength: 1
           description: "공백만 입력할 수 없습니다."
       required:
-      - "category"
       - "name"
       x-java-class: "com.nerdnam.project.api.ProjectController$NewSkillRequest"
     RestoreRequest:
@@ -4292,6 +4298,7 @@ components:
           - "database"
           - "infra"
           - "tool"
+          - "etc"
         id:
           type: "integer"
           format: "int64"
