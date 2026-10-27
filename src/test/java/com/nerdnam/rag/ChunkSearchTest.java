@@ -2,6 +2,7 @@ package com.nerdnam.rag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nerdnam.infra.ai.Embeddings;
 import com.nerdnam.rag.application.ChunkSearch;
 import com.nerdnam.rag.application.ChunkType;
 import com.nerdnam.support.ApiTestSupport;
@@ -12,13 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * 하이브리드 검색의 후보 구성 (D-12, 기획서 v1.39). 청크를 직접 넣어 SQL 만 확인한다.
  *
- * <p>벡터는 손으로 만든다: 768차원 중 첫 칸만 1이고 나머지는 0인 질의 벡터를 쓰고, 청크 벡터의 첫 칸 값으로
+ * <p>벡터는 손으로 만든다: 1024차원 중 첫 칸만 1이고 나머지는 0인 질의 벡터를 쓰고, 청크 벡터의 첫 칸 값으로
  * 유사도 순서를 정한다(코사인 유사도 = 첫 칸 값). 기술 청크에 높은 값을 줘서 **점수만으로 뽑으면 기술 청크가
  * 후보를 채우는 상황**을 만든 뒤, 종류별 몫이 사례를 지켜 주는지 본다.
  */
 class ChunkSearchTest extends ApiTestSupport {
 
-    private static final int DIMENSIONS = 768;
+    private static final int DIMENSIONS = Embeddings.DIMENSIONS;   // DB 열과 같은 차원 (ADR-0007: 1024)
 
     @Autowired
     ChunkSearch search;
@@ -103,7 +104,7 @@ class ChunkSearchTest extends ApiTestSupport {
                         INSERT INTO rag.chunk (member_id, chunk_type, source_id, source_version, title, content,
                                                skills, embedding, embedding_model, embedding_status)
                         VALUES (:m, CAST(:type AS text), :source, 1, '제목', '내용', CAST(:skills AS text[]),
-                                CAST(:v AS public.vector), 'stub-embedding:768', 'READY')
+                                CAST(:v AS public.vector), 'stub-embedding:1024', 'READY')
                         RETURNING id
                         """)
                 .param("m", memberId)

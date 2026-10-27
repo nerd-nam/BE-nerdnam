@@ -12,7 +12,7 @@ class StubAiServerClientTest {
     private final StubAiServerClient stub = new StubAiServerClient();
 
     @Test
-    void 같은_텍스트는_항상_같은_768차원_단위_벡터다() {
+    void 같은_텍스트는_항상_같은_차원의_단위_벡터다() {
         float[] first = stub.embed(List.of(EmbedItem.of("결제 승인 API")), EmbedPurpose.DOCUMENT).vectors().getFirst();
         float[] second = stub.embed(List.of(EmbedItem.of("결제 승인 API")), EmbedPurpose.DOCUMENT).vectors().getFirst();
 

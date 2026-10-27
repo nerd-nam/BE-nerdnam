@@ -1,5 +1,7 @@
 package com.nerdnam.rag.application;
 
+import com.nerdnam.infra.ai.AiServerUnavailableException;
+import com.nerdnam.infra.ai.Embeddings;
 import com.nerdnam.rag.infrastructure.Vectors;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -53,6 +55,13 @@ public class ChunkSearch {
      */
     public List<Hit> search(long memberId, float[] queryVector, Collection<String> skills, int limit) {
         Objects.requireNonNull(queryVector, "queryVector");
+        // 차원이 다르면 pgvector 가 SQL 안에서 "different vector dimensions" 로 터지고, 작업은 internal 로만
+        // 실패해 원인이 안 보인다 (이슈 #31). 모델을 바꾼 뒤 재임베딩이 끝나지 않았을 때 생긴다
+        if (queryVector.length != Embeddings.DIMENSIONS) {
+            throw new AiServerUnavailableException(AiServerUnavailableException.Reason.AI_ERROR,
+                    "search: 질의 벡터 %d차원 ≠ rag.chunk.embedding vector(%d) — 임베딩 모델이 바뀠는지 확인하세요"
+                            .formatted(queryVector.length, Embeddings.DIMENSIONS), null);
+        }
         // 한 회원의 청크는 수십 개 수준이라(ADR-0001 평가 데이터 36~39개) member_id 로 좁힌 뒤 전부 점수를 낸다.
         // 종류별 순위를 내려면 종류마다 충분한 후보가 있어야 해서, 점수 상위 20개로 먼저 줄이지 않는다 —
         // 그렇게 줄이면 기술 청크가 자리를 채워 사례가 애초에 순위에 들지 못한다 (D-12 가 고치려는 문제).

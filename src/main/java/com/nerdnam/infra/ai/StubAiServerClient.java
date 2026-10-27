@@ -28,8 +28,9 @@ import java.util.regex.Pattern;
  */
 public class StubAiServerClient implements AiServerClient {
 
-    public static final int DIMENSIONS = 768;   // embeddinggemma-2 와 같은 차원 (rag.chunk.embedding)
-    public static final String MODEL = "stub-embedding:768";
+    /** 실제 모델과 같은 차원 (ADR-0007: Titan V2 = 1024). {@link Embeddings#DIMENSIONS} 와 같아야 한다 */
+    public static final int DIMENSIONS = Embeddings.DIMENSIONS;
+    public static final String MODEL = "stub-embedding:" + DIMENSIONS;
     public static final String LLM = "stub-llm";
     public static final String PROMPT_VERSION = "stub-v1";
 
