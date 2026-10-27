@@ -1,6 +1,6 @@
 # AI 계약 테스트 자원
 
-계약은 2026-10-26에 SPEC PR #52·#54 (C-04 **v0.3.0**, 태그 `contracts-v0.3.0`)에서 복사했다. `/requirements/extract` 응답에 `expansions`(필수, 약어 확장어)가 추가됐다. `guide.json`은 같은 시점 SPEC 예시이고 `prompt_version`이 `p4_v2`·`p5_v2`로 올랐다.
+계약은 2026-10-27에 SPEC PR #83 (C-04 **v0.3.0**, 태그 `contracts-v0.3.0`)에서 다시 복사했다. ADR-0007(AI 서빙을 AWS Bedrock 으로)로 **503 설명만** "모델 준비 안 됨·Bedrock 사용 불가"로 바뀠고 **모양(경로·필드·필수·enum) 변경은 없다**. 그 전 복사(2026-10-26, SPEC PR #52·#54)에서 `/requirements/extract` 응답에 `expansions`(필수, 약어 확장어)가 추가됐다. `guide.json`은 그 시점 SPEC 예시 그대로이고(`prompt_version` `p4_v2`·`p5_v2`) 이번에는 바뀌지 않았다.
 
 | 파일 | 원본 |
 | --- | --- |

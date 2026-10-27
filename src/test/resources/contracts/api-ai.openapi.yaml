@@ -1,4 +1,5 @@
-# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.3.0, 2026-10-26, SPEC PR #52·#54, 태그 contracts-v0.3.0)
+# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.3.0, 2026-10-27, SPEC PR #83, 태그 contracts-v0.3.0)
+# 모양 변경 없음 — ADR-0007(Bedrock 전환)으로 503 설명이 "모델 준비 안 됨·Bedrock 사용 불가"로 바뀠다.
 # 계약이 바뀌면 다시 복사한다. 대조는 ApiAiContractTest가 한다.
 openapi: 3.1.0
 info:
@@ -35,7 +36,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmbedResponse'
         '503':
-          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+          description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
         '422':
           description: Validation Error
           content:
@@ -60,7 +61,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/RestructureResponse'
         '503':
-          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+          description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
         '504':
@@ -89,7 +90,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ExtractResponse'
         '503':
-          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+          description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
         '504':
@@ -118,7 +119,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/MatchResponse'
         '503':
-          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+          description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
         '504':
@@ -147,7 +148,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/GapGuideResponse'
         '503':
-          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+          description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
         '504':
@@ -176,7 +177,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/GuideResponse'
         '503':
-          description: 모델 준비 안 됨 (GPU_UNAVAILABLE)
+          description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
         '504':
