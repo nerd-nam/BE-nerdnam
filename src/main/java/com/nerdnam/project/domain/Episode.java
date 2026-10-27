@@ -57,7 +57,10 @@ public class Episode extends BaseTimeEntity {
     @Column(name = "status", nullable = false, length = 20)
     private EpisodeStatus status;
 
-    /** 현재 버전 = 항상 가장 최신 버전 (되돌리기도 새 버전으로 쌓는다) */
+    /**
+     * 지금 쓰는 버전. <b>가장 큰 번호가 아닐 수 있다</b> — "이 버전에서 이어서 하기"(BE #29)로
+     * 이전 버전을 다시 쓰면 번호가 내려간다. 화면·RAG·판정은 모두 이 버전의 내용을 쓴다.
+     */
     @Column(name = "current_version", nullable = false)
     private int currentVersion;
 
@@ -100,11 +103,26 @@ public class Episode extends BaseTimeEntity {
         return status == EpisodeStatus.CONFIRMED;
     }
 
-    /** P5: 버전 번호는 1부터 1씩 증가, 만든 버전은 바꾸지 않는다 */
+    /**
+     * P5: 버전 번호는 1부터 1씩 증가, 만든 버전은 바꾸지 않는다.
+     *
+     * <p>번호는 <b>가장 큰 번호 + 1</b>이다. {@code currentVersion + 1}로 세면, 이전 버전을 쓰다가 고칠 때
+     * 이미 있는 번호와 겹쳐 {@code uk_episode_version}을 위반한다 (BE #29).
+     */
     void addVersion(EpisodeContent content, ChangeType changeType, Integer restoredFrom, String feedback, AiTrace trace) {
-        int next = currentVersion + 1;
+        int next = maxVersionNo() + 1;
         versions.add(EpisodeVersion.of(this, next, content, changeType, restoredFrom, feedback, trace));
         currentVersion = next;
+    }
+
+    /** "이 버전에서 이어서 하기" (P6) — 새 버전을 만들지 않고 지금 쓰는 버전만 바꾼다 */
+    void useVersion(int versionNo) {
+        version(versionNo);   // 없는 번호면 404
+        currentVersion = versionNo;
+    }
+
+    private int maxVersionNo() {
+        return versions.stream().mapToInt(EpisodeVersion::getVersionNo).max().orElse(0);
     }
 
     void confirm() {

@@ -258,15 +258,21 @@ public class Project extends BaseTimeEntity {
         return episode;
     }
 
-    /** "이 버전으로 바꾸기" (P6) — 고른 버전을 복사해 새 최신 버전(RESTORED). 사례 상태는 그대로 */
+    /**
+     * "이 버전에서 이어서 하기" (P6, BE #29) — <b>새 버전을 만들지 않고</b> 지금 쓰는 버전만 바꾼다.
+     * 사례 상태는 그대로다.
+     *
+     * <p>전에는 고른 버전을 복사해 새 버전(RESTORED)을 쌓았는데, v3 → v1 로 갈 때마다 v4·v5 가 늘어
+     * 헷갈린다는 사용자 결정으로 바뀠다. 이어서 고치면 그때 <b>가장 큰 번호 + 1</b> 로 새 버전이 생긴다.
+     * 그 버전의 확인 질문도 함께 되살아난다 (복사하던 때와 같다).
+     */
     public void restoreVersion(Long episodeId, int versionNo) {
         ensureInReview();
         Episode episode = editableEpisode(episodeId);
         if (versionNo == episode.getCurrentVersion()) {
             throw new BusinessException(ErrorCode.DOMAIN_RULE_VIOLATED, "이미 지금 버전이에요.");
         }
-        EpisodeContent chosen = episode.version(versionNo).content();
-        episode.addVersion(chosen, ChangeType.RESTORED, versionNo, null, null);
+        episode.useVersion(versionNo);
     }
 
     // ------------------------------------------------------------------ 결정

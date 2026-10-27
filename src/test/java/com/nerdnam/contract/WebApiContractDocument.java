@@ -43,7 +43,7 @@ final class WebApiContractDocument {
 
     private void metadata() {
         document.put("openapi", "3.1.0");
-        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.4")
+        document.putObject("info").put("title", "nerdnam 웹 API").put("version", "0.1.5")
                 .put("description", """
                         C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
                         JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -445,7 +445,7 @@ final class WebApiContractDocument {
                 Map.entry("addSkill", "사용 기술 추가"), Map.entry("answer", "확인 질문 답변"), Map.entry("confirm", "프로젝트 확정"),
                 Map.entry("confirmEpisode", "사례 확정"), Map.entry("discardReview", "검토 결과 버리기"),
                 Map.entry("drop", "질문을 빼고 진행"), Map.entry("edit", "사례 직접 편집"), Map.entry("excludeEpisode", "사례 제외"),
-                Map.entry("reopen", "재등록 시작"), Map.entry("resplit", "다시 나누기"), Map.entry("restore", "사례 버전 복원"),
+                Map.entry("reopen", "재등록 시작"), Map.entry("resplit", "다시 나누기"), Map.entry("restore", "이 버전에서 이어서 하기"),
                 Map.entry("review", "검토·읽기 모드 조회"), Map.entry("revise", "사례 수정 요청"), Map.entry("split", "재구성 시작"),
                 Map.entry("undo", "사례 다시 검토하기"));
         return domains.getOrDefault(controller, "서비스") + " — " + actions.getOrDefault(method, method);
@@ -467,6 +467,11 @@ final class WebApiContractDocument {
         }
         if (path.equals("/api/projects/{projectId}") && method.equals("delete")) {
             return "초안·검토·확정·재등록 중 모두 삭제할 수 있다. 해당 프로젝트 재구성 작업 중에는 409 AI_JOB_RUNNING과 runningJobId를 준다. 청크·벡터도 같은 트랜잭션에서 삭제한다. 이전 리포트·작성 방향은 이름과 deleted=true 표시를 남긴다.";
+        }
+        if (path.endsWith("/restore")) {
+            return "이 버전에서 이어서 하기 — 새 버전을 만들지 않고 사례의 currentVersion 만 고른 버전으로 바꾼다. "
+                    + "그 버전의 확인 질문도 함께 되살아난다. 이미 쓰는 버전이면 422, 없는 번호면 404다. "
+                    + "이어서 고치면 그때 가장 큰 번호 + 1 로 새 버전이 생긴다 (currentVersion 이 가장 큰 번호가 아닐 수 있다).";
         }
         if (path.endsWith("/review")) {
             return "프로젝트가 confirmed이면 확정한 사례만 읽기 모드로 조회한다. 재등록 중에는 현재 검토 회차를 조회한다.";
