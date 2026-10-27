@@ -1,7 +1,7 @@
 openapi: "3.1.0"
 info:
   title: "nerdnam 웹 API"
-  version: "0.1.6"
+  version: "0.1.7"
   description: |
     C-03 웹 ↔ BE 계약. BE의 실제 컨트롤러에서 ./gradlew exportWebApiContract로 내보낸다.
     JSON 필드는 camelCase, enum 값은 소문자다. ProblemDetail.title 오류 코드는 대문자다.
@@ -4066,6 +4066,19 @@ components:
       - "userSkillId"
       - "name"
       x-java-class: "com.nerdnam.project.application.ProjectViews$SkillRef"
+    SourceSpan:
+      type: "object"
+      properties:
+        end:
+          type: "integer"
+          format: "int32"
+        start:
+          type: "integer"
+          format: "int32"
+      required:
+      - "start"
+      - "end"
+      x-java-class: "com.nerdnam.project.application.ProjectViews$SourceSpan"
     Summary:
       type: "object"
       properties:
@@ -4274,19 +4287,6 @@ components:
       - "after"
       - "source"
       x-java-class: "com.nerdnam.project.domain.Metric"
-    SourceSpan:
-      type: "object"
-      properties:
-        end:
-          type: "integer"
-          format: "int32"
-        start:
-          type: "integer"
-          format: "int32"
-      required:
-      - "start"
-      - "end"
-      x-java-class: "com.nerdnam.project.domain.SourceSpan"
     SkillResponse:
       type: "object"
       properties:
