@@ -12,7 +12,6 @@ import com.nerdnam.project.domain.Metric;
 import com.nerdnam.project.domain.Project;
 import com.nerdnam.project.domain.ProjectStatus;
 import com.nerdnam.project.domain.ProjectSupplement;
-import com.nerdnam.project.domain.SourceSpan;
 import java.time.Instant;
 import java.time.YearMonth;
 import java.util.List;
@@ -68,6 +67,22 @@ public final class ProjectViews {
         }
     }
 
+    /**
+     * 원문 구간 — <b>응답은 {@code {"start":0,"end":11}} 객체</b>다 (계약 C-03, 웹이 형광펜을 칠하는 값).
+     * 계약 스키마 이름을 그대로 두려고 도메인 타입과 같은 이름을 쓴다 (FE 가 이 이름으로 타입을 만든다).
+     *
+     * <p>도메인 {@code project.domain.SourceSpan} 에는 {@code @JsonFormat(shape = ARRAY)} 가 붙어 있다. jsonb 컬럼에
+     * 기획서 4.3 처럼 {@code [0, 182]} 로 저장하려는 설정인데, 그 타입을 응답에 그대로 내보내면
+     * <b>응답도 배열이 된다</b> — 계약은 객체여서 웹의 형광펜이 전부 칠해지지 않았다 (BE #37).
+     * 그래서 저장용 타입과 응답용 타입을 나눈다.
+     */
+    public record SourceSpan(int start, int end) {
+
+        static SourceSpan from(com.nerdnam.project.domain.SourceSpan span) {
+            return new SourceSpan(span.start(), span.end());
+        }
+    }
+
     /** 사례 + 현재 내용 + 모든 버전 (버전 탭은 웹에서 고른다, C-02 S05 조회 2) */
     public record EpisodeView(Long id, int splitRound, int displayOrder, EpisodeOrigin origin, EpisodeStatus status,
                               int currentVersion, String title, @Nullable String role, @Nullable String problem,
@@ -79,7 +94,7 @@ public final class ProjectViews {
             EpisodeContent c = e.current().content();
             return new EpisodeView(e.getId(), e.getSplitRound(), e.getDisplayOrder(), e.getOrigin(), e.getStatus(),
                     e.getCurrentVersion(), c.title(), c.role(), c.problem(), c.solution(), c.result(), c.skills(),
-                    c.metrics(), c.sourceSpans(), c.clarifications(),
+                    c.metrics(), c.sourceSpans().stream().map(SourceSpan::from).toList(), c.clarifications(),
                     e.getVersions().stream().map(VersionView::from).toList());
         }
     }
@@ -93,7 +108,8 @@ public final class ProjectViews {
         static VersionView from(EpisodeVersion v) {
             return new VersionView(v.getVersionNo(), v.getChangeType(), v.getRestoredFrom(), v.getFeedback(),
                     v.getCreatedAt(), v.getTitle(), v.getRole(), v.getProblem(), v.getSolution(), v.getResult(),
-                    v.getSkills(), v.getMetrics(), v.getSourceSpans(), v.getClarifications());
+                    v.getSkills(), v.getMetrics(),
+                    v.getSourceSpans().stream().map(SourceSpan::from).toList(), v.getClarifications());
         }
     }
 }

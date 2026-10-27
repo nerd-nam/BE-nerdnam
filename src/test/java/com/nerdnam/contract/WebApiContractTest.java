@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.nerdnam.common.auth.CurrentMemberId;
 import com.nerdnam.guide.domain.GuideTab;
 import com.nerdnam.support.ApiTestSupport;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
@@ -135,6 +137,36 @@ class WebApiContractTest extends ApiTestSupport {
                 }
             }
         });
+    }
+
+    /**
+     * <b>계약에 적힌 모양과 실제 JSON 모양이 같은지 확인한다</b> (BE #37).
+     *
+     * <p>계약은 springdoc 이 <b>타입</b>을 보고 만든다. 그래서 {@code @JsonFormat(shape = ARRAY)} 처럼
+     * <b>Jackson 이 JSON 모양 자체를 바꾸는 설정</b>은 계약에 나타나지 않는다. 실제로 {@code SourceSpan} 이
+     * 그랬다 — 계약은 {@code {start, end}} 객체인데 응답은 {@code [0, 11]} 배열이어서 웹의 형광펜이
+     * 하나도 칠해지지 않았다. 두 테스트(계약 대조·API)가 모두 통과한 것은 양쪽이 같이 틀렸기 때문이다.
+     *
+     * <p>그래서 응답에 쓰는 타입에는 이 설정을 두지 않는다. jsonb 저장처럼 배열 모양이 필요하면
+     * 저장용 타입과 응답용 타입을 나눈다({@code domain.SourceSpan} ↔ {@code ProjectViews.SourceSpan}).
+     */
+    @Test
+    void 응답_타입은_JSON_모양을_바꾸는_설정을_쓰지_않는다() throws Exception {
+        JsonNode schemas = YAML.readTree(Files.readString(COPY)).path("components").path("schemas");
+        List<String> shapeChanged = new ArrayList<>();
+        schemas.properties().forEach(entry -> {
+            Class<?> type = javaType(entry.getValue());
+            if (type == null) {
+                return;
+            }
+            JsonFormat format = type.getAnnotation(JsonFormat.class);
+            if (format != null && format.shape() != JsonFormat.Shape.ANY) {
+                shapeChanged.add(entry.getKey() + "(@JsonFormat shape=" + format.shape() + ")");
+            }
+        });
+        assertThat(shapeChanged)
+                .as("계약은 이 설정을 표현하지 못해 응답 모양이 계약과 어긋납니다 — 응답용 타입을 따로 두세요")
+                .isEmpty();
     }
 
     /**

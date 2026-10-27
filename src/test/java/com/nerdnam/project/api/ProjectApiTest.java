@@ -84,7 +84,10 @@ class ProjectApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.splitRound").value(1))
                 .andExpect(jsonPath("$.episodes", hasSize(2)))
                 .andExpect(jsonPath("$.episodes[0].skills[0]").value("Spring Boot"))
-                .andExpect(jsonPath("$.episodes[0].sourceSpans[0][0]").value(0))
+                // 원문 구간은 계약대로 {start, end} 객체다 — 배열이면 웹 형광펜이 칠해지지 않는다 (#37)
+                .andExpect(jsonPath("$.episodes[0].sourceSpans[0].start").value(0))
+                .andExpect(jsonPath("$.episodes[0].sourceSpans[0].end").isNumber())
+                .andExpect(jsonPath("$.episodes[0].versions[0].sourceSpans[0].start").value(0))
                 .andExpect(jsonPath("$.episodes[0].versions[0].changeType").value("ai_split"))
                 .andExpect(jsonPath("$.episodes[1].clarifications[0].key").value("result-metric"))
                 .andExpect(jsonPath("$.runningJobId").doesNotExist());
