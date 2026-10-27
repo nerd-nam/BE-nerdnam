@@ -1,7 +1,8 @@
 -- 임베딩 차원 768 → 1024 (BE-19, 이슈 #31)
 --
 -- AI 서빙이 AWS Bedrock 으로 바뀌어 임베딩 모델이 Amazon Titan Text Embeddings V2 가 됐다
--- (SPEC ADR-0007 제안, AI 레포 PR #30). Titan V2 가 내는 차원은 256·512·1024 뿐이라
+-- (SPEC ADR-0007, AI 레포 PR #30). 1024 로 확정됐다(사용자 결정 2026-10-27).
+-- Titan V2 가 내는 차원은 256·512·1024 뿐이라
 -- 768 로 맞출 수 없다. 차원이 다른 벡터는 pgvector 가 거리 계산을 못 한다
 -- ("ERROR: different vector dimensions 768 and 1024").
 --

@@ -22,6 +22,7 @@ curl http://localhost:8080/actuator/health   # {"status":"UP"}
 
 - 소셜 로그인: `.env.example`을 `.env`로 복사해 키를 입력한 뒤 `docker compose up -d`. **기존 `.env`는 덮어쓰지 마세요.** Compose가 `.env` 값을 API 컨테이너에 전달합니다.
 - FE: `API_ORIGIN=http://localhost:8080`. 로그인 전 `/api/me`의 401은 정상입니다.
+- **검색·적합도 분석까지 보려면 AWS Bedrock 키가 필요합니다** (AI 레포 `.env`, ADR-0007). AI 스텁이나 `AI_MODE=stub` 에서는 임베딩이 가짜라 청크가 "임베딩 대기"에 머물고(기획서 v1.18) **근거가 비어 요건이 모두 미충족으로 나옵니다 — 버그가 아닙니다.**
 - 로그인 없이 API 테스트: `NERDNAM_AUTH_MODE=header docker compose up -d api` 후 `curl -H 'X-Member-Id: 1' http://localhost:8080/api/me`. FE 소셜 로그인은 `session` 모드를 사용합니다.
 - 코드 변경 반영: `docker compose up --build -d`. 환경변수 변경 반영: `docker compose up -d` (`restart`만으로는 새 값이 적용되지 않음).
 - 종료: `docker compose down`. DB 볼륨은 유지되고 Redis 세션은 컨테이너 재생성 시 사라집니다.

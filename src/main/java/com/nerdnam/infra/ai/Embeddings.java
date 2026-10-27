@@ -14,7 +14,7 @@ public record Embeddings(List<float[]> vectors, String embeddingModel) {
 
     /**
      * 저장할 벡터의 차원. <b>{@code rag.chunk.embedding} 의 {@code vector(1024)} 와 같아야 한다</b>
-     * (ADR-0007: Amazon Titan Text Embeddings V2). 차원이 다른 벡터를 넣거나 질의로 쓰면 pgvector 가
+     * (ADR-0007 확정: Amazon Titan Text Embeddings V2, 1024). 차원이 다른 벡터를 넣거나 질의로 쓰면 pgvector 가
      * "different vector dimensions" 로 거절하는데, 그 오류는 SQL 에서 터져 원인이 드러나지 않는다
      * (이슈 #31 에서 작업이 {@code internal} 로만 실패했다). 그래서 여기서 먼저 막는다.
      * 차원을 바꿀 때는 마이그레이션(열 타입)과 이 값을 함께 바꾸고 전체를 다시 임베딩한다.
