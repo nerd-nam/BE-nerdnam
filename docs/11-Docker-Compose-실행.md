@@ -157,3 +157,18 @@ curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -
 - 영속 큐(재시작 후 재개)는 **하지 않았습니다.** 지금 작업은 모두 사용자가 버튼을 눌러 시작하고 다시
   시도할 수 있어서, 끊긴 것을 보이게 실패시키는 쪽이 더 정직합니다. 자동 재개가 필요해지면 그때
   outbox 를 넣습니다.
+## main 머지 → ECR 이미지 push (BE #43)
+
+`.github/workflows/push-image.yml` 이 `main` 머지마다 **테스트 → 이미지 빌드 → ECR push** 를 합니다.
+
+- 인증은 **GitHub OIDC → AWS 역할**입니다. 정적 AWS 키를 저장소에 두지 않습니다.
+- 역할 ARN 은 저장소 변수 **`AWS_CI_ROLE_ARN_API`** 로 줍니다 (INFRA `terraform output workload.ci_role_arns.api`).
+  **변수가 없으면 작업을 건너뜁니다** — 역할이 배포되기 전에 main 의 CI 가 빨간불이 되지 않게 한 것이고,
+  변수를 넣는 순간부터 돌기 시작합니다.
+- 태그는 **커밋 SHA** 입니다 (ECR 이 IMMUTABLE 이라 같은 태그를 두 번 올릴 수 없습니다).
+  배포 정의(INFRA `gitops/apps/images.yaml`)에는 **digest** 를 넣고, workflow 요약에 태그와 digest 를 적어 둡니다.
+
+```
+Settings → Secrets and variables → Actions → Variables
+  AWS_CI_ROLE_ARN_API = arn:aws:iam::<계정>:role/nerdnam-dev-ci-api
+```

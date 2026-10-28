@@ -1,0 +1,103 @@
+# main 에 머지되면 테스트 → 이미지 빌드 → ECR push (BE #43, 인프라 6단계)
+#
+# 인증은 GitHub OIDC → AWS 역할이다. 정적 AWS 키를 두지 않는다. 역할은 INFRA Terraform 이 만들고
+# **이 저장소의 main workflow 만** 받아 `nerdnam-dev/api` 에만 push 할 수 있다.
+#
+# 역할 ARN 은 저장소 변수 `AWS_CI_ROLE_ARN_API` 로 준다 (INFRA terraform output
+# workload.ci_role_arns.api). **변수가 없으면 이 작업을 건너뛴다** — 역할이 아직 배포되지 않았는데
+# main 의 CI 가 빨간불이 되지 않게 하려는 것이다. 변수를 넣는 순간부터 돌기 시작한다.
+name: 이미지 push
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # 역할을 넣은 뒤 과거 커밋으로 한 번 돌려 볼 때
+
+permissions:
+  id-token: write           # OIDC 토큰 발급
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_REGION: ap-northeast-2
+      ECR_REPOSITORY: nerdnam-dev/api
+    steps:
+      - name: 역할이 준비됐는지 확인
+        id: guard
+        env:
+          ROLE: ${{ vars.AWS_CI_ROLE_ARN_API }}
+        run: |
+          if [ -z "$ROLE" ]; then
+            echo "저장소 변수 AWS_CI_ROLE_ARN_API 가 없어 이미지 push 를 건너뜁니다 (BE #43)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 코드 받기
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/checkout@v6
+
+      # 테스트를 통과한 커밋만 올린다 (같은 커밋을 '테스트' workflow 도 돌리지만,
+      # 여기서 한 번 더 보는 쪽이 "배포된 이미지는 초록이었다"를 보장하기 쉽다)
+      - name: JDK 21 준비
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Gradle 캐시 준비
+        if: steps.guard.outputs.ready == 'true'
+        uses: gradle/actions/setup-gradle@v5
+      - name: 전체 테스트 실행
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          LANG: C.UTF-8
+        run: ./gradlew test
+
+      - name: AWS 자격 받기 (OIDC)
+        if: steps.guard.outputs.ready == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_CI_ROLE_ARN_API }}
+          aws-region: ap-northeast-2
+      - name: ECR 로그인
+        if: steps.guard.outputs.ready == 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ECR 태그는 IMMUTABLE 이라 커밋 SHA 를 쓴다 (같은 태그를 두 번 올릴 수 없다).
+      # 배포 정의(INFRA gitops/apps/images.yaml)에는 digest 를 넣으므로 digest 를 출력한다.
+      - name: 이미지 빌드·push
+        if: steps.guard.outputs.ready == 'true'
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          set -euo pipefail
+          ref="$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA"
+          docker build -t "$ref" .
+          docker push "$ref"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$ref")
+          echo "image=$ref" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: 올린 이미지 알리기
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          {
+            echo "### ECR 에 올린 이미지"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| 태그 | \`$IMAGE\` |"
+            echo "| digest | \`$DIGEST\` |"
+            echo
+            echo "배포 정의(INFRA \`gitops/apps/images.yaml\`)에는 **digest** 를 넣습니다."
+          } >> "$GITHUB_STEP_SUMMARY"
