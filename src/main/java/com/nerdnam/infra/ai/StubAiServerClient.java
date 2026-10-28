@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
  */
 public class StubAiServerClient implements AiServerClient {
 
+    // LLM 을 부르지 않으므로 usage 는 0 이다 (BE-20). "모름(null)"과 구분한다
+
     /** 실제 모델과 같은 차원 (ADR-0007: Titan V2 = 1024). {@link Embeddings#DIMENSIONS} 와 같아야 한다 */
     public static final int DIMENSIONS = Embeddings.DIMENSIONS;
     public static final String MODEL = "stub-embedding:" + DIMENSIONS;
@@ -75,7 +77,7 @@ public class StubAiServerClient implements AiServerClient {
     public RestructureResult restructure(RestructureRequest request) {
         checkRestructureInput(request);
         if (RestructureRequest.MODE_EPISODE.equals(request.mode())) {
-            return new RestructureResult(List.of(revise(request)), LLM, PROMPT_VERSION);
+            return new RestructureResult(List.of(revise(request)), LLM, PROMPT_VERSION, AiUsage.ZERO);
         }
         List<int[]> paragraphs = paragraphs(request.sourceText());
         boolean merge = request.feedback() != null && request.feedback().contains("합쳐");
@@ -86,7 +88,7 @@ public class StubAiServerClient implements AiServerClient {
         for (int[] span : paragraphs.subList(0, Math.min(MAX_EPISODES, paragraphs.size()))) {
             episodes.add(episodeOf(request, span));
         }
-        return new RestructureResult(episodes, LLM, PROMPT_VERSION);
+        return new RestructureResult(episodes, LLM, PROMPT_VERSION, AiUsage.ZERO);
     }
 
     @Override
@@ -103,7 +105,7 @@ public class StubAiServerClient implements AiServerClient {
             return new RequirementExtraction.Extracted(line.id(), List.copyOf(skills), expansions(line.text()),
                     minYears);
         }).toList();
-        return new RequirementExtraction.Result(lines, LLM, PROMPT_VERSION);
+        return new RequirementExtraction.Result(lines, LLM, PROMPT_VERSION, AiUsage.ZERO);
     }
 
     @Override
@@ -125,7 +127,7 @@ public class StubAiServerClient implements AiServerClient {
             }
             return new MatchCall.Judgement(req.id(), "unmet", List.of(), "근거가 되는 경험을 찾지 못했어요.");
         }).toList();
-        return new MatchCall.Result(results, LLM, PROMPT_VERSION);
+        return new MatchCall.Result(results, LLM, PROMPT_VERSION, AiUsage.ZERO);
     }
 
     @Override
@@ -143,7 +145,7 @@ public class StubAiServerClient implements AiServerClient {
             List<Long> cited = hasAdjacent ? List.of(req.adjacent().getFirst().chunkId()) : List.of();
             return new GapGuideCall.Guide(req.id(), advice, "해 보지 않은 경험을 해 본 것처럼 쓰지 마세요.", cited);
         }).toList();
-        return new GapGuideCall.Result(guides, LLM, PROMPT_VERSION);
+        return new GapGuideCall.Result(guides, LLM, PROMPT_VERSION, AiUsage.ZERO);
     }
 
     @Override
@@ -171,7 +173,7 @@ public class StubAiServerClient implements AiServerClient {
         if (request.feedback() != null && !request.feedback().isBlank()) {
             content.put("feedback_applied", request.feedback());
         }
-        return new GuideCall.Result(content, cited, LLM, PROMPT_VERSION);
+        return new GuideCall.Result(content, cited, LLM, PROMPT_VERSION, AiUsage.ZERO);
     }
 
     /** 줄에 쓰인 약어의 확장어. 줄에 이미 있는 말과 중복은 빼고 최대 3개 (기획서 5.5 AI 쪽 정리 규칙과 같다) */

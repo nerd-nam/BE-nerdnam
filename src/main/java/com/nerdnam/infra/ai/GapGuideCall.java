@@ -30,7 +30,7 @@ public final class GapGuideCall {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Result(List<Guide> guides, String model, String promptVersion) {
+    public record Result(List<Guide> guides, String model, String promptVersion, AiUsage usage) {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

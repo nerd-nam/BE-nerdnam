@@ -17,12 +17,14 @@ class JdbcAiCallLog implements AiCallLog {
 
     @Override
     public void record(AiCallContext context, String operation, String aiModel, String promptVersion,
-                       boolean success, String errorCode, long latencyMs) {
+                       boolean success, String errorCode, long latencyMs, AiUsage usage) {
         try {
             jdbc.sql("""
                             INSERT INTO app.ai_call_log
-                                (member_id, operation, target_type, target_id, ai_model, prompt_version, success, error_code, latency_ms)
-                            VALUES (:memberId, :operation, :targetType, :targetId, :aiModel, :promptVersion, :success, :errorCode, :latency)
+                                (member_id, operation, target_type, target_id, ai_model, prompt_version, success, error_code,
+                                 latency_ms, input_tokens, output_tokens, llm_calls)
+                            VALUES (:memberId, :operation, :targetType, :targetId, :aiModel, :promptVersion, :success, :errorCode,
+                                    :latency, :inputTokens, :outputTokens, :llmCalls)
                             """)
                     .param("memberId", context.memberId())
                     .param("operation", operation)
@@ -33,6 +35,9 @@ class JdbcAiCallLog implements AiCallLog {
                     .param("success", success)
                     .param("errorCode", errorCode)
                     .param("latency", (int) Math.min(Integer.MAX_VALUE, latencyMs))
+                    .param("inputTokens", usage == null ? null : usage.inputTokens())
+                    .param("outputTokens", usage == null ? null : usage.outputTokens())
+                    .param("llmCalls", usage == null ? null : usage.llmCalls())
                     .update();
         } catch (RuntimeException e) {
             log.warn("Failed to record AI call log ({}): {}", operation, e.getMessage());

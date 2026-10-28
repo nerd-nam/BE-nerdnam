@@ -30,7 +30,7 @@ public final class MatchCall {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Result(List<Judgement> results, String model, String promptVersion) {
+    public record Result(List<Judgement> results, String model, String promptVersion, AiUsage usage) {
     }
 
     /** @param verdict met / partial / unmet */

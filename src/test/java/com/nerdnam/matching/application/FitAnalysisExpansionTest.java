@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nerdnam.infra.ai.AiUsage;
 import com.nerdnam.infra.ai.AiServerClient;
 import com.nerdnam.infra.ai.EmbedItem;
 import com.nerdnam.infra.ai.EmbedPurpose;
@@ -45,7 +46,7 @@ class FitAnalysisExpansionTest {
         when(ai.extractRequirements(any())).thenReturn(new RequirementExtraction.Result(List.of(
                 new RequirementExtraction.Extracted(2L, List.of("Redis"), List.of(), null),
                 new RequirementExtraction.Extracted(1L, List.of("Spring"), List.of("Spring Framework"), null)),
-                "모델", "p2_v2"));
+                "모델", "p2_v2", AiUsage.ZERO));
         when(postings.applyExtraction(eq(7L), eq(10L), any())).thenReturn(posting);
         when(catalog.find("Spring Framework"))
                 .thenReturn(Optional.of(new SkillSummary(100L, "Spring", null, true)));
@@ -55,8 +56,8 @@ class FitAnalysisExpansionTest {
                 .thenReturn(new Embeddings(List.of(springVector, redisVector), "모델"));
         when(ai.match(any())).thenReturn(new MatchCall.Result(List.of(
                 new MatchCall.Judgement(1L, "unmet", List.of(), "근거 없음"),
-                new MatchCall.Judgement(2L, "unmet", List.of(), "근거 없음")), "모델", "p3_v3"));
-        when(ai.gapGuide(any())).thenReturn(new GapGuideCall.Result(List.of(), "모델", "p6_v1"));
+                new MatchCall.Judgement(2L, "unmet", List.of(), "근거 없음")), "모델", "p3_v3", AiUsage.ZERO));
+        when(ai.gapGuide(any())).thenReturn(new GapGuideCall.Result(List.of(), "모델", "p6_v1", AiUsage.ZERO));
 
         FitAnalysisPipeline.Output result = pipeline.run(7L, posting);
 

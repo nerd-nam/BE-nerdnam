@@ -22,7 +22,7 @@ public final class RequirementExtraction {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Result(List<Extracted> lines, String model, String promptVersion) {
+    public record Result(List<Extracted> lines, String model, String promptVersion, AiUsage usage) {
     }
 
     /**

@@ -43,6 +43,7 @@ public final class GuideCall {
 
     /** content 의 모양은 탭마다 다르고 AI 계약이 정한다. API 는 통째로 jsonb 에 저장한다 */
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Result(Map<String, Object> content, List<Long> citedChunkIds, String model, String promptVersion) {
+    public record Result(Map<String, Object> content, List<Long> citedChunkIds, String model, String promptVersion,
+                         AiUsage usage) {
     }
 }
