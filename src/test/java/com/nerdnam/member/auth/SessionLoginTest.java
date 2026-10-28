@@ -62,7 +62,14 @@ class SessionLoginTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.title").value("UNAUTHORIZED"));
         mvc.perform(get("/api/me").header("X-Member-Id", "1")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+        // Kubernetes probe 경로까지 열려 있어야 한다 — 401 이면 Pod 가 뜨지 못한다 (BE #42).
+        // 상세 정보(show-details)는 기본값으로 가려져 components 가 나가지 않는다
+        mvc.perform(get("/actuator/health")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.components").doesNotExist());
+        mvc.perform(get("/actuator/health/liveness")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+        mvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
     }
 
     @Test

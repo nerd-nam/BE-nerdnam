@@ -65,10 +65,31 @@ server:
   port: 8080
 
 management:
+  # actuator 를 **공개 포트와 분리한 관리 포트**로 옮길 수 있다 (BE #44): MANAGEMENT_PORT 를 주면
+  # 그 포트에서만 열리고 공개 포트에는 actuator 가 아예 없다. 인프라는 이 포트를 Ingress 에 넣지 않고
+  # Prometheus 만 NetworkPolicy 로 들여보낸다. **그때는 Kubernetes probe 도 이 포트로 와야 한다**
+  # (liveness·readiness 경로가 거기 있다, BE #42).
+  #
+  # 기본값은 비워 둔다 — 로컬·테스트는 앱 포트(8080)에서 그대로 쓰는 게 편하고,
+  # 분리는 운영에서만 필요하다. 분리하면 ManagementSecurityConfig 체인이 켜진다.
+  server:
+    port: ${MANAGEMENT_PORT:}
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true             # Kubernetes 밖에서도 health/liveness·health/readiness 가 있게 (BE #42)
+      group:
+        # liveness = "프로세스가 살아 있나". DB·Redis 를 넣으면 DB 가 잠깐 끊겨도 Pod 가 재시작된다
+        liveness:
+          include: livenessState
+        # readiness = "요청을 받을 수 있나". DB 없이는 어떤 API 도 못 하고,
+        # Redis 가 없으면 세션 쓰는 요청이 500 이므로 둘 다 넣는다 (BE #42 질문에 대한 답)
+        readiness:
+          include: readinessState,db,redis
 
 nerdnam:
   auth:

@@ -28,6 +28,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")   // /actuator/prometheus (관리 포트, BE #44)
 
     // 로그인: Spring Security + OAuth2 소셜 로그인(Google·카카오), 쿠키 세션 (BE-03)
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
