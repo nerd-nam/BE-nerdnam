@@ -133,3 +133,27 @@ readinessProbe: { httpGet: { path: /actuator/health/readiness, port: 8081 } }
 | `nerdnam_aijob_in_progress` | 진행 중으로 남은 작업 (DB 기준, 모든 Pod) |
 | `nerdnam_aijob_failed_recent` | 최근 5분 실패 수 |
 | `nerdnam_chunk_pending` · `nerdnam_chunk_pending_oldest_seconds` | 임베딩 대기 청크와 최장 대기 시간 — 쌓이면 검색 근거가 비어 판정이 전부 미충족이 된다 |
+## 배포 절차 — AI 작업 비우기 (BE #45)
+
+AI 작업 큐는 **메모리**에 있습니다. Pod 가 내려가면 큐가 사라지고, DB 의 작업 행은 `IN_PROGRESS` 로
+남지만 아무도 다시 실행하지 않습니다. 그래서 교체 전에 비우고, 못 비운 것은 보이게 실패시킵니다.
+
+```bash
+# 1) 새 작업 접수 중지 (readiness 도 내려가 트래픽이 끊긴다)
+curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -d '{"state":"drain"}'
+
+# 2) 비었는지 폴링 — drained 가 true 가 되면 교체한다
+curl -s localhost:8081/actuator/aijob     # {"draining":true,"inFlight":2,"queued":0,"active":2,"drained":false}
+
+# 3) 교체. 배포를 취소했다면
+curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -d '{"state":"resume"}'
+```
+
+- 접수 중지 중에는 새 작업이 **503 `AI_UNAVAILABLE`**("잠시 뒤 다시 시도해 주세요")로 거절됩니다.
+  계약에 있는 코드라 웹은 이미 이 상태를 다룹니다 — 사용자가 다시 누르면 교체된 Pod 가 받습니다.
+- **0 을 못 기다리고 내려가도** 끝내지 못한 작업은 종료 때 실패(`INTERNAL`)로 정리됩니다. 사용자는
+  "만드는 중"에 갇히지 않고 바로 "다시 시도"를 봅니다 — 그러지 않으면 오래 멈춘 작업 정리
+  (`stale-after` 20분)를 기다려야 합니다.
+- 영속 큐(재시작 후 재개)는 **하지 않았습니다.** 지금 작업은 모두 사용자가 버튼을 눌러 시작하고 다시
+  시도할 수 있어서, 끊긴 것을 보이게 실패시키는 쪽이 더 정직합니다. 자동 재개가 필요해지면 그때
+  outbox 를 넣습니다.

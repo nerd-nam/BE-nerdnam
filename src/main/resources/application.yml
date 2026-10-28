@@ -77,7 +77,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,aijob   # aijob = 배포 절차용 접수 중지·상태 (BE #45)
   endpoint:
     health:
       probes:
