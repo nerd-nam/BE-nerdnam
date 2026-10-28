@@ -104,3 +104,32 @@ docker compose down
 자동 테스트는 호스트 Java 21 + `./gradlew test`로 실행한다. Testcontainers가 테스트 DB·Redis를 따로 만든다. 이미지 빌드는 `bootJar`만 실행하므로 빌드 컨테이너에 Docker 소켓을 넘길 필요가 없다.
 
 공식 참고: [Compose 시작 순서](https://docs.docker.com/compose/how-tos/startup-order/), [환경변수와 .env](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/), [컨테이너 네트워크](https://docs.docker.com/compose/how-tos/networking/).
+
+## 관리 포트와 Kubernetes probe (BE #42·#44)
+
+`MANAGEMENT_PORT` 를 주면 actuator 가 **그 포트에서만** 열리고 공개 포트(8080)에는 아예 없습니다.
+기본값은 비워 뒀습니다 — 로컬·테스트는 앱 포트에서 그대로 쓰는 쪽이 편하고, 분리는 운영에서만 필요합니다.
+
+| 설정 | actuator 위치 | 쓰는 곳 |
+| --- | --- | --- |
+| `MANAGEMENT_PORT` 없음 (로컬 기본) | 앱 포트 `8080` | `curl localhost:8080/actuator/health` |
+| `MANAGEMENT_PORT=8081` (운영) | 관리 포트 `8081` 만 | Kubernetes probe·Prometheus. Ingress 에 넣지 않는다 |
+
+**운영에서 분리하면 probe 도 관리 포트로 와야 합니다:**
+
+```yaml
+livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8081 } }
+readinessProbe: { httpGet: { path: /actuator/health/readiness, port: 8081 } }
+```
+
+- `liveness` 는 **프로세스만** 봅니다(`livenessState`). DB·Redis 를 넣으면 DB 가 잠깐 끊겨도 Pod 가 재시작됩니다.
+- `readiness` 는 **`readinessState` + `db` + `redis`** 입니다. DB 없이는 어떤 API 도 못 하고, Redis 가 없으면 세션 쓰는 요청이 500 이라 트래픽을 받으면 안 됩니다.
+- 상세 정보는 `show-details` 기본값(`never`)으로 가려 둡니다 — 응답에 `components` 가 나가지 않습니다.
+- 지표는 관리 포트의 `/actuator/prometheus` 입니다. label 에는 `member_id`·작업 id 를 쓰지 않습니다(시계열이 무한히 늘어납니다).
+
+| 지표 | 뜻 |
+| --- | --- |
+| `nerdnam_aijob_queue_size` · `nerdnam_aijob_threads_active` · `_max` | 그 Pod 의 AI 작업 큐·스레드 |
+| `nerdnam_aijob_in_progress` | 진행 중으로 남은 작업 (DB 기준, 모든 Pod) |
+| `nerdnam_aijob_failed_recent` | 최근 5분 실패 수 |
+| `nerdnam_chunk_pending` · `nerdnam_chunk_pending_oldest_seconds` | 임베딩 대기 청크와 최장 대기 시간 — 쌓이면 검색 근거가 비어 판정이 전부 미충족이 된다 |

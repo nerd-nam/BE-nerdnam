@@ -41,7 +41,11 @@ public class SecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/actuator/health", "/actuator/info", "/error").permitAll()
+                        // 관리 포트를 따로 두면 공개 포트에 actuator 가 없다 (BE #44). 같은 포트를 쓰는
+                        // 환경(테스트·로컬)에서는 probe 경로까지 열어 둔다 — health 하위가 401 이면 Kubernetes
+                        // probe 가 실패한다 (BE #42). 상세 정보는 show-details 기본값(never)으로 가린다
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info", "/error")
+                        .permitAll()
                         .requestMatchers("/oauth2/**", "/login/**").permitAll()
                         .requestMatchers("/api/auth/csrf").permitAll()
                         .requestMatchers("/api/**").authenticated()
