@@ -1,5 +1,5 @@
-# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.3.0, 2026-10-27, SPEC PR #83, 태그 contracts-v0.3.0)
-# 모양 변경 없음 — ADR-0007(Bedrock 전환)으로 503 설명이 "모델 준비 안 됨·Bedrock 사용 불가"로 바뀠다.
+# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.4.0, 2026-10-27, SPEC PR #87)
+# 추가만: LLM 응답 5개에 usage(input_tokens·output_tokens·llm_calls) 필수, 오류 본문에도 usage.
 # 계약이 바뀌면 다시 복사한다. 대조는 ApiAiContractTest가 한다.
 openapi: 3.1.0
 info:
@@ -7,7 +7,7 @@ info:
   description: 'API ↔ AI 계약 (C-04). 출처는 AI 레포 `app/schemas.py`, 규칙은 SPEC 기획서 5.5 "AI 서버 공통 규칙".
 
 
-    - 모든 생성 응답에 `model`·`prompt_version`. `prompt_version`이 `"stub"`이면 가짜 응답(저장 안 함), `/embed`는 `embedding_model`이 `"stub"`.
+    - 모든 생성 응답에 `model`·`prompt_version`·`usage`(요청 1건의 LLM 입력·출력 토큰과 호출 수 합계). AI 서버가 낸 오류(502·503·504, `/guide` 문맥 초과 422)도 `{detail, usage}`로 실패 전까지 쓴 토큰을 담는다. 요청 형식 검사 422는 LLM을 부르기 전이라 `usage`가 없다(`detail`이 목록). `prompt_version`이 `"stub"`이면 가짜 응답(저장 안 함), `/embed`는 `embedding_model`이 `"stub"`.
 
     - 실패: 연결 실패·연결 시간 초과·503 → `GPU_UNAVAILABLE`(1회 재시도), 읽기 시간 초과 → `TIMEOUT`(재시도 안 함), AI 서버의 504 → `TIMEOUT`(재시도 안 함), 422 → `AI_ERROR`(재시도 안 함), 그 밖 5xx → `AI_ERROR`(1회 재시도).
 
@@ -16,7 +16,7 @@ info:
     - `/guide`는 탭마다 1회 호출, JSON 응답(SSE 아님).
 
     '
-  version: 0.3.0
+  version: 0.4.0
 paths:
   /embed:
     post:
@@ -37,6 +37,10 @@ paths:
                 $ref: '#/components/schemas/EmbedResponse'
         '503':
           description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
@@ -62,10 +66,22 @@ paths:
                 $ref: '#/components/schemas/RestructureResponse'
         '503':
           description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '504':
           description: LLM 생성 시간 초과 (TIMEOUT, 재시도 안 함)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
@@ -91,10 +107,22 @@ paths:
                 $ref: '#/components/schemas/ExtractResponse'
         '503':
           description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '504':
           description: LLM 생성 시간 초과 (TIMEOUT, 재시도 안 함)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
@@ -120,10 +148,22 @@ paths:
                 $ref: '#/components/schemas/MatchResponse'
         '503':
           description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '504':
           description: LLM 생성 시간 초과 (TIMEOUT, 재시도 안 함)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
@@ -149,10 +189,22 @@ paths:
                 $ref: '#/components/schemas/GapGuideResponse'
         '503':
           description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '504':
           description: LLM 생성 시간 초과 (TIMEOUT, 재시도 안 함)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
@@ -178,10 +230,22 @@ paths:
                 $ref: '#/components/schemas/GuideResponse'
         '503':
           description: 모델 준비 안 됨·Bedrock 사용 불가 (GPU_UNAVAILABLE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '502':
           description: LLM 출력 형식 오류 (AI_ERROR)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '504':
           description: LLM 생성 시간 초과 (TIMEOUT, 재시도 안 함)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Validation Error
           content:
@@ -428,6 +492,21 @@ components:
       - result
       title: Episode
       description: 사례 (기획서 4.3 에피소드 모양)
+    ErrorResponse:
+      properties:
+        detail:
+          type: string
+          title: Detail
+        usage:
+          $ref: '#/components/schemas/Usage'
+      type: object
+      required:
+      - detail
+      - usage
+      title: ErrorResponse
+      description: 'AI 서버가 낸 오류(502·503·504, /guide 문맥 초과 422). 실패하기 전까지 쓴 토큰도 usage에 담는다.
+
+        요청 형식 검사 422는 FastAPI 기본 응답(detail 목록, usage 없음)'
     ExtractRequest:
       properties:
         lines:
@@ -448,6 +527,8 @@ components:
         prompt_version:
           type: string
           title: Prompt Version
+        usage:
+          $ref: '#/components/schemas/Usage'
         lines:
           items:
             $ref: '#/components/schemas/ExtractedLine'
@@ -457,6 +538,7 @@ components:
       required:
       - model
       - prompt_version
+      - usage
       - lines
       title: ExtractResponse
     ExtractedLine:
@@ -550,6 +632,8 @@ components:
         prompt_version:
           type: string
           title: Prompt Version
+        usage:
+          $ref: '#/components/schemas/Usage'
         guides:
           items:
             $ref: '#/components/schemas/GapGuide'
@@ -559,6 +643,7 @@ components:
       required:
       - model
       - prompt_version
+      - usage
       - guides
       title: GapGuideResponse
     GapRequirement:
@@ -689,6 +774,8 @@ components:
         prompt_version:
           type: string
           title: Prompt Version
+        usage:
+          $ref: '#/components/schemas/Usage'
         content:
           oneOf:
           - $ref: '#/components/schemas/MotiveContent'
@@ -714,6 +801,7 @@ components:
       required:
       - model
       - prompt_version
+      - usage
       - content
       - cited_chunk_ids
       title: GuideResponse
@@ -912,6 +1000,8 @@ components:
         prompt_version:
           type: string
           title: Prompt Version
+        usage:
+          $ref: '#/components/schemas/Usage'
         results:
           items:
             $ref: '#/components/schemas/MatchResult'
@@ -921,6 +1011,7 @@ components:
       required:
       - model
       - prompt_version
+      - usage
       - results
       title: MatchResponse
     MatchResult:
@@ -1183,6 +1274,8 @@ components:
         prompt_version:
           type: string
           title: Prompt Version
+        usage:
+          $ref: '#/components/schemas/Usage'
         episodes:
           items:
             $ref: '#/components/schemas/Episode'
@@ -1192,6 +1285,7 @@ components:
       required:
       - model
       - prompt_version
+      - usage
       - episodes
       title: RestructureResponse
     Rewrite:
@@ -1234,6 +1328,24 @@ components:
       - kind
       title: ToolVisual
       description: 이미지 생성 대신 도구로 만들 시각자료 (글자·수치가 필요한 도식·차트)
+    Usage:
+      properties:
+        input_tokens:
+          type: integer
+          title: Input Tokens
+        output_tokens:
+          type: integer
+          title: Output Tokens
+        llm_calls:
+          type: integer
+          title: Llm Calls
+      type: object
+      required:
+      - input_tokens
+      - output_tokens
+      - llm_calls
+      title: Usage
+      description: 요청 1건이 쓴 LLM 토큰 합계 (형식 오류 재요청·요건별 호출 포함). 비용·호출량 관측용, BE는 ai_call_log에 저장
     ValidationError:
       properties:
         loc:

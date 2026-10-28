@@ -131,6 +131,14 @@ class ProjectApiTest extends ApiTestSupport {
                         """)
                 .param("m", member).param("p", project).query(Integer.class).single();
         assertThat(calls).isEqualTo(2);
+
+        // 토큰 사용량도 같은 줄에 남는다 (BE-20). 스텁은 LLM 을 부르지 않으므로 0 이다 — null("모름")과 구분한다
+        List<Integer> tokens = jdbc.sql("""
+                        SELECT input_tokens FROM app.ai_call_log
+                        WHERE member_id = :m AND operation = 'RESTRUCTURE' AND target_id = :p
+                        """)
+                .param("m", member).param("p", project).query(Integer.class).list();
+        assertThat(tokens).isNotEmpty().allSatisfy(t -> assertThat(t).isZero());
     }
 
     @Test

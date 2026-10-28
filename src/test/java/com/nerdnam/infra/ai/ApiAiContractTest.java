@@ -63,6 +63,7 @@ class ApiAiContractTest {
     }
 
     static Stream<Arguments> records() {
+        var usage = new AiUsage(3343, 147, 2);   // 이슈 #39 의 실측 예 (/match 요건 2개)
         var metric = new AiEpisode.Metric("응답 시간", "100ms", "50ms", "raw_text");
         var clarification = new AiEpisode.Clarification("result-metric", "result", "성과는 무엇인가요?", "50% 감소");
         var episode = new AiEpisode("성능 개선", "개발", "느린 조회", "캐시", "50% 감소",
@@ -96,25 +97,30 @@ class ApiAiContractTest {
                 record("Answer", answer, "question answer"),
                 record("RestructureRequest", new RestructureRequest(RestructureRequest.MODE_EPISODE, "프로젝트", "원문",
                         List.of("Redis"), List.of(episode), List.of(episode), episode, "성과 보충", answer), "mode source_text"),
-                record("RestructureResponse", new RestructureResult(List.of(episode), "모델", "p1"), "model prompt_version episodes"),
+                record("RestructureResponse", new RestructureResult(List.of(episode), "모델", "p1", usage),
+                        "model prompt_version usage episodes"),
                 record("RequirementLine", line, "id type text"),
                 record("ExtractRequest", new RequirementExtraction.Request(List.of(line)), "lines"),
                 record("ExtractedLine", extracted, "id skills_raw expansions"),
-                record("ExtractResponse", new RequirementExtraction.Result(List.of(extracted), "모델", "p2"), "model prompt_version lines"),
+                record("ExtractResponse", new RequirementExtraction.Result(List.of(extracted), "모델", "p2", usage),
+                        "model prompt_version usage lines"),
                 record("Candidate", candidate, "chunk_id chunk_type text"),
                 record("MatchRequirement", requirement, "id type text candidates"),
                 record("MatchRequest", new MatchCall.Request(List.of(requirement)), "requirements"),
                 record("MatchResult", judgement, "id verdict evidence_chunk_ids reason"),
-                record("MatchResponse", new MatchCall.Result(List.of(judgement), "모델", "p3"), "model prompt_version results"),
+                record("MatchResponse", new MatchCall.Result(List.of(judgement), "모델", "p3", usage),
+                        "model prompt_version usage results"),
                 record("GapRequirement", gap, "id type text verdict"),
                 record("GapGuideRequest", new GapGuideCall.Request(List.of(gap), List.of("개발")), "requirements"),
                 record("GapGuide", gapGuide, "id advice avoid cited_chunk_ids"),
-                record("GapGuideResponse", new GapGuideCall.Result(List.of(gapGuide), "모델", "p6"), "model prompt_version guides"),
+                record("GapGuideResponse", new GapGuideCall.Result(List.of(gapGuide), "모델", "p6", usage),
+                        "model prompt_version usage guides"),
                 record("GapAdvice", advice, "advice avoid"),
                 record("GuideRequirement", guideRequirement, "id type text verdict reason"),
                 record("GuideRequest", new GuideCall.Request(GuideTab.MOTIVATION.aiName(), "회사", "개발자", "소개",
                         List.of("개발"), List.of(guideRequirement), "성과 강조"), "tab requirements"),
-                record("GuideResponse", guideFixture(GuideTab.MOTIVATION), "content cited_chunk_ids model prompt_version")
+                record("GuideResponse", guideFixture(GuideTab.MOTIVATION), "content cited_chunk_ids model prompt_version usage"),
+                record("Usage", usage, "input_tokens output_tokens llm_calls")
         );
     }
 

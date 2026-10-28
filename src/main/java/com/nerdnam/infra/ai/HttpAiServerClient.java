@@ -10,6 +10,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,7 +21,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import tools.jackson.databind.json.JsonMapper;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * 실제 AI 서버를 부르는 구현. 실패하면 이유를 나눠 {@link AiServerUnavailableException}으로 바꾼다 (작업목록 BE-05).
@@ -32,6 +34,9 @@ import tools.jackson.databind.json.JsonMapper;
 public class HttpAiServerClient implements AiServerClient {
 
     private static final Logger log = LoggerFactory.getLogger(HttpAiServerClient.class);
+
+    /** 오류 본문에서 usage 만 꺼내 읽는다 (응답 본문은 RestClient 가 읽는다) */
+    private static final JsonMapper ERROR_BODY = JsonMapper.builder().build();
     private static final int MAX_ATTEMPTS = 2;
     private static final JsonMapper GUIDE_JSON = JsonMapper.builder().build();
 
@@ -170,6 +175,8 @@ public class HttpAiServerClient implements AiServerClient {
             } catch (RestClientException e) {
                 last = e;
                 reason = classify(e);
+                // 실패한 시도도 토큰을 썼다. 오류 본문의 usage 를 모아 뒀다가 호출 1건의 합으로 기록한다 (BE-20)
+                AiUsageTally.addFailedAttempt(usageOf(e));
                 log.warn("AI server call failed ({} attempt {}/{}, {}): {}",
                         endpoint.operation(), attempt, MAX_ATTEMPTS, reason, e.getMessage());
                 if (!retryable(e, reason)) {
@@ -178,6 +185,27 @@ public class HttpAiServerClient implements AiServerClient {
             }
         }
         throw new AiServerUnavailableException(reason, endpoint.operation(), last);
+    }
+
+    /**
+     * AI 서버가 낸 오류 본문의 {@code usage} (계약 C-04 v0.4.0 {@code ErrorResponse}).
+     * 연결 실패·읽기 시간 초과처럼 본문이 없거나, 요청 형식 422(FastAPI 기본, {@code detail} 이 목록)처럼
+     * {@code usage} 가 없으면 null 이다 — "안 썼다(0)"와 "모른다(null)"를 구분한다.
+     */
+    private static AiUsage usageOf(RestClientException e) {
+        if (!(e instanceof RestClientResponseException response)) {
+            return null;
+        }
+        try {
+            JsonNode usage = ERROR_BODY.readTree(response.getResponseBodyAsString()).path("usage");
+            if (usage.isMissingNode() || usage.isNull()) {
+                return null;
+            }
+            return ERROR_BODY.treeToValue(usage, AiUsage.class);
+        } catch (RuntimeException parseFailed) {
+            log.debug("Could not read usage from AI error body", parseFailed);
+            return null;
+        }
     }
 
     /**
