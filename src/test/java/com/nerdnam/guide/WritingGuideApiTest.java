@@ -74,6 +74,31 @@ class WritingGuideApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.citations[0].projectId").doesNotExist());
     }
 
+    /**
+     * 다섯 탭을 한꺼번에 만든다 (기획서 v1.59). 잠금은 <b>탭마다</b> 따로라
+     * ({@code uk_ai_job_running} = 대상 + {@code lock_scope}), 한 탭이 만드는 중이어도 다른 탭은 409 가 아니라
+     * 202 로 받는다. 같은 탭을 또 누르면 409 + {@code runningJobId} 다.
+     */
+    @Test
+    void 한_탭이_만드는_중이어도_다른_탭은_동시에_만들_수_있다() throws Exception {
+        Long member = newMember();
+        Long posting = analyzedPosting(member);
+        Long analysis = readLong(getJson(member, "/api/job-postings/{id}/report", posting), "$.analysisId");
+        Long running = jdbc.sql("""
+                INSERT INTO app.ai_job (member_id, job_type, mode, target_type, target_id, lock_scope)
+                VALUES (:m, 'WRITING_GUIDE', 'motive', 'FIT_ANALYSIS', :a, 'motive') RETURNING id
+                """).param("m", member).param("a", analysis).query(Long.class).single();
+
+        // 지원동기(motive)가 만드는 중이어도 나머지 네 탭은 받는다
+        for (String tab : java.util.List.of("intro", "portfolio", "career", "image")) {
+            postJson(member, null, "/api/job-postings/{id}/guides/" + tab, posting).andExpect(status().isAccepted());
+        }
+        // 같은 탭을 또 누르면 409 — 그 작업을 기다리라고 번호를 준다
+        postJson(member, null, "/api/job-postings/{id}/guides/motive", posting)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.runningJobId").value(running));
+    }
+
     @Test
     void 생성_중인_탭의_작업_id를_목록과_상세에서_돌려준다() throws Exception {
         Long member = newMember();
