@@ -6,10 +6,12 @@ import com.nerdnam.aijob.domain.FailureCode;
 import com.nerdnam.aijob.domain.TargetType;
 import com.nerdnam.common.error.BusinessException;
 import com.nerdnam.common.error.ErrorCode;
+import jakarta.annotation.PreDestroy;
 import com.nerdnam.infra.ai.AiCallContext;
 import com.nerdnam.infra.ai.AiServerUnavailableException;
 import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,18 +47,30 @@ public class AiJobs {
     private final TransactionTemplate tx;
     private final TaskExecutor executor;
     private final AiJobProperties properties;
+    private final AiJobDrain drain;
+    /** 이 Pod 가 접수해 아직 끝내지 못한 작업. 종료 때 실패로 정리한다 (BE #45) */
+    private final Map<Long, JobWork<?, ?>> inFlight = new ConcurrentHashMap<>();
 
     public AiJobs(AiJobRepository jobs, PlatformTransactionManager transactionManager,
-                  @Qualifier("aiJobExecutor") TaskExecutor executor, AiJobProperties properties) {
+                  @Qualifier("aiJobExecutor") TaskExecutor executor, AiJobProperties properties,
+                  AiJobDrain drain) {
         this.jobs = jobs;
         this.tx = new TransactionTemplate(transactionManager);
         this.executor = executor;
         this.properties = properties;
+        this.drain = drain;
+        drain.inFlightSource(inFlight::size);
     }
 
     /** 작업을 접수하고 별도 스레드에서 실행한다. 돌려주는 값은 작업 id */
     public <T, R> Long start(JobRequest request, JobWork<T, R> work) {
+        // 배포 준비로 접수를 멈춘 상태면 새 작업을 받지 않는다 (BE #45). 계약에 있는 코드라
+        // 웹은 이미 "잠시 뒤 다시 시도해 주세요"를 띄운다 — 사용자가 다시 누르면 새 Pod 가 받는다
+        if (drain.draining()) {
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE, ErrorCode.AI_UNAVAILABLE.defaultMessage());
+        }
         Accepted<T> accepted = accept(request, work);
+        inFlight.put(accepted.jobId(), work);
         Runnable task = () -> run(accepted.jobId(), request, accepted.input(), work);
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             // 바깥 트랜잭션이 있으면 작업 행이 커밋된 뒤에 실행해야 작업 스레드가 그 행을 볼 수 있다
@@ -136,6 +150,8 @@ public class AiJobs {
         } catch (RuntimeException e) {
             log.error("AI job {} failed unexpectedly", jobId, e);
             fail(jobId, FailureCode.INTERNAL, work);
+        } finally {
+            inFlight.remove(jobId);   // 끝났으니 종료 때 정리할 대상이 아니다 (BE #45)
         }
     }
 
@@ -148,6 +164,25 @@ public class AiJobs {
         } catch (RuntimeException e) {
             log.error("Could not mark AI job {} as failed", jobId, e);
         }
+    }
+
+    /**
+     * 종료 때 끝내지 못한 작업을 실패로 정리한다 (BE #45). 큐에만 있던 작업까지 함께 정리된다 —
+     * 큐가 메모리에 있어 Pod 가 내려가면 아무도 실행하지 않기 때문이다.
+     *
+     * <p>이렇게 해야 사용자가 "만드는 중"에 갇히지 않고 바로 "다시 시도"를 본다.
+     * 그러지 않으면 오래 멈춘 작업 정리(기본 {@code stale-after} 20분)가 돌 때까지 기다려야 한다.
+     * 배포 전에 {@code /actuator/aijob} 으로 접수를 멈추고 0 이 되기를 기다리면 여기서 할 일이 없다.
+     */
+    @PreDestroy
+    void failUnfinishedOnShutdown() {
+        if (inFlight.isEmpty()) {
+            return;
+        }
+        log.warn("Shutting down with {} unfinished AI job(s); marking them failed so users can retry: {}",
+                inFlight.size(), inFlight.keySet());
+        inFlight.forEach((jobId, work) -> fail(jobId, FailureCode.INTERNAL, work));
+        inFlight.clear();
     }
 
     private record Accepted<T>(Long jobId, T input) {
