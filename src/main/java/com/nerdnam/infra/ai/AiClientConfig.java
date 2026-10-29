@@ -1,5 +1,7 @@
 package com.nerdnam.infra.ai;
 
+import io.micrometer.observation.ObservationRegistry;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -9,8 +11,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 public class AiClientConfig {
 
     @Bean
-    public AiServerClient aiServerClient(AiServerProperties properties, JdbcClient jdbc) {
-        AiServerClient client = properties.stub() ? new StubAiServerClient() : HttpAiServerClient.create(properties);
+    public AiServerClient aiServerClient(AiServerProperties properties, JdbcClient jdbc,
+                                         ObjectProvider<ObservationRegistry> observations) {
+        AiServerClient client = properties.stub() ? new StubAiServerClient()
+                : HttpAiServerClient.create(properties, observations.getIfAvailable(() -> ObservationRegistry.NOOP));
         return new RecordingAiServerClient(client, new JdbcAiCallLog(jdbc));
     }
 }

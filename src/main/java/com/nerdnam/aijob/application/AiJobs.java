@@ -13,8 +13,11 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Optional;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -48,17 +51,19 @@ public class AiJobs {
     private final TaskExecutor executor;
     private final AiJobProperties properties;
     private final AiJobDrain drain;
+    private final ObservationRegistry observations;
     /** 이 Pod 가 접수해 아직 끝내지 못한 작업. 종료 때 실패로 정리한다 (BE #45) */
     private final Map<Long, JobWork<?, ?>> inFlight = new ConcurrentHashMap<>();
 
     public AiJobs(AiJobRepository jobs, PlatformTransactionManager transactionManager,
                   @Qualifier("aiJobExecutor") TaskExecutor executor, AiJobProperties properties,
-                  AiJobDrain drain) {
+                  AiJobDrain drain, ObjectProvider<ObservationRegistry> observations) {
         this.jobs = jobs;
         this.tx = new TransactionTemplate(transactionManager);
         this.executor = executor;
         this.properties = properties;
         this.drain = drain;
+        this.observations = observations.getIfAvailable(() -> ObservationRegistry.NOOP);
         drain.inFlightSource(inFlight::size);
     }
 
@@ -132,7 +137,20 @@ public class AiJobs {
         }
     }
 
+    /**
+     * 작업 스레드에서 도는 부분은 별도 span({@code nerdnam.ai.job})으로 만든다 (BE #51). 접수 요청의 span 은 바로
+     * 끝나고 이 span 이 그 자식으로 이어진다(실행기가 trace 를 넘긴다). 작업 id 는 span 속성으로만 넣는다 —
+     * 지표 label 로 쓰면 시계열이 무한히 늘어나므로 high cardinality 로 둔다.
+     */
     private <T, R> void run(Long jobId, JobRequest request, T input, JobWork<T, R> work) {
+        Observation.createNotStarted("nerdnam.ai.job", observations)
+                .contextualName("ai-job " + request.jobType().name().toLowerCase(java.util.Locale.ROOT))
+                .lowCardinalityKeyValue("job.type", request.jobType().name().toLowerCase(java.util.Locale.ROOT))
+                .highCardinalityKeyValue("job.id", String.valueOf(jobId))
+                .observe(() -> runObserved(jobId, request, input, work));
+    }
+
+    private <T, R> void runObserved(Long jobId, JobRequest request, T input, JobWork<T, R> work) {
         AiCallContext context = new AiCallContext(request.memberId(), request.targetType().name(), request.targetId());
         try {
             R result = AiCallContext.with(context, () -> work.call().apply(input));

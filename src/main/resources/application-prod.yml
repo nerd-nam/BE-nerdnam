@@ -1,0 +1,13 @@
+# 운영 프로필 (SPRING_PROFILES_ACTIVE=prod). 로컬은 사람이 읽기 쉬운 글자 로그로 둔다.
+
+logging:
+  structured:
+    # stdout 을 한 줄 JSON 으로 — Loki 가 줄마다 읽는다 (BE #51).
+    format:
+      console: logstash
+    json:
+      # Micrometer Tracing 이 MDC 에 넣는 traceId·spanId 를 Grafana 의 로그 ↔ trace 연결 형식으로 바꾼다
+      # (32자리 소문자 16진수 trace_id 를 찾는다). traceId 도 읽지만 인프라 계약대로 맞춘다
+      rename:
+        traceId: trace_id
+        spanId: span_id
