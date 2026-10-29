@@ -36,4 +36,18 @@ class TracingConfigTest {
         assertThat(predicate.test("http.server.requests", request("/api/projects/1/review"))).isTrue();
         assertThat(predicate.test("nerdnam.ai.job", new Observation.Context())).isTrue();
     }
+
+    /** probe 의 Redis INFO 처럼 부모 없는 Redis 명령은 버리고, API 요청 안의 Redis 호출은 남긴다 */
+    @Test
+    void 부모_없는_Redis_명령만_버린다() {
+        ObservationPredicate redis = new TracingConfig().skipOrphanRedisCommands();
+        io.lettuce.core.tracing.LettuceObservationContext orphan = new io.lettuce.core.tracing.LettuceObservationContext("redis");
+        assertThat(redis.test("redis", orphan)).isFalse();
+
+        io.lettuce.core.tracing.LettuceObservationContext inRequest = new io.lettuce.core.tracing.LettuceObservationContext("redis");
+        inRequest.setParentObservation(io.micrometer.observation.Observation.start("http.server.requests",
+                io.micrometer.observation.ObservationRegistry.create()));
+        assertThat(redis.test("redis", inRequest)).isTrue();
+        assertThat(redis.test("http.server.requests", new Observation.Context())).isTrue();
+    }
 }

@@ -1,5 +1,6 @@
 package com.nerdnam.common.observability;
 
+import io.lettuce.core.tracing.LettuceObservationContext;
 import io.micrometer.observation.ObservationPredicate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,5 +20,16 @@ public class TracingConfig {
         return (name, context) -> !(context instanceof ServerRequestObservationContext server
                 && server.getCarrier() != null
                 && server.getCarrier().getRequestURI().startsWith("/actuator"));
+    }
+
+    /**
+     * <b>부모 없는 Redis 명령 span 은 버린다.</b> readiness probe 가 Redis 상태를 {@code INFO} 로 확인하는데, 그 HTTP
+     * span 은 위에서 뺐으므로 명령 span 이 부모 없이 남아 probe 마다 trace 를 하나씩 만든다. 연결할 때의
+     * {@code HELLO}·{@code CLIENT} 도 같다(로컬 Tempo 에서 실제로 확인함). API 요청 안의 Redis 호출(세션 읽기)은
+     * 부모가 있으므로 그대로 남는다.
+     */
+    @Bean
+    ObservationPredicate skipOrphanRedisCommands() {
+        return (name, context) -> !(context instanceof LettuceObservationContext && context.getParentObservation() == null);
     }
 }
