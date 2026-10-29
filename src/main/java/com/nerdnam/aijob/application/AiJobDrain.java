@@ -4,9 +4,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.availability.AvailabilityChangeEvent;
-import org.springframework.boot.availability.ReadinessState;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 /**
@@ -19,8 +16,8 @@ import org.springframework.stereotype.Component;
  * <p><b>하는 일</b>
  * <ol>
  *   <li><b>접수 중지</b>({@code drain}) — 새 작업을 {@code AI_UNAVAILABLE}("잠시 뒤 다시 시도해 주세요")로
- *       거절한다. 계약에 있는 코드라 웹은 이미 다루는 상태다. 동시에 readiness 를 내려
- *       Kubernetes 가 트래픽을 끊게 한다.</li>
+ *       거절한다. 계약에 있는 코드라 웹은 이미 다루는 상태다. <b>readiness 는 내리지 않는다</b> —
+ *       replica 1 에서 내리면 모든 API 가 503 이 된다 (BE #50, #47 에서 내리던 것을 되돌림).</li>
  *   <li><b>비었는지 알려 준다</b> — 관리 포트의 {@code /actuator/aijob} 으로 큐·실행 중 개수를 본다.
  *       0 이 되면 배포한다.</li>
  *   <li><b>종료 때 정리</b> — 그래도 남은 작업은 {@link AiJobs} 가 실패({@code INTERNAL})로 바꾼다
@@ -37,23 +34,24 @@ public class AiJobDrain {
     private static final Logger log = LoggerFactory.getLogger(AiJobDrain.class);
 
     private final AtomicBoolean draining = new AtomicBoolean(false);
-    private final ApplicationEventPublisher events;
     /** 이 Pod 가 아직 끝내지 못한 작업 수 — AiJobs 가 알려 준다 */
     private volatile IntSupplier inFlight = () -> 0;
 
-    AiJobDrain(ApplicationEventPublisher events) {
-        this.events = events;
+    AiJobDrain() {
     }
 
     void inFlightSource(IntSupplier source) {
         this.inFlight = source;
     }
 
-    /** 새 작업 접수를 멈추고 트래픽도 받지 않는다 */
+    /**
+     * 새 <b>AI 작업</b> 접수만 멈춘다. <b>readiness 는 건드리지 않는다</b> (BE #50) —
+     * 운영은 replica 1 이라 readiness 를 내리면 Service endpoint 가 비어 로그인·조회까지 전부 503 이 된다.
+     * 그 밖의 API 는 계속 받고, 교체 직전(SIGTERM)의 트래픽 정리는 Spring graceful shutdown 이 맡는다.
+     */
     public void drain() {
         if (draining.compareAndSet(false, true)) {
             log.info("AI job intake stopped (draining). In-flight: {}", inFlight.getAsInt());
-            events.publishEvent(new AvailabilityChangeEvent<>(this, ReadinessState.REFUSING_TRAFFIC));
         }
     }
 
@@ -61,7 +59,6 @@ public class AiJobDrain {
     public void resume() {
         if (draining.compareAndSet(true, false)) {
             log.info("AI job intake resumed");
-            events.publishEvent(new AvailabilityChangeEvent<>(this, ReadinessState.ACCEPTING_TRAFFIC));
         }
     }
 
