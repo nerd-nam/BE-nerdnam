@@ -1,4 +1,8 @@
 spring:
+  lifecycle:
+    # Kubernetes terminationGracePeriodSeconds(90초) 안에 끝나야 한다. 남은 AI 작업은 이 단계 뒤
+    # @PreDestroy 에서 실패로 정리된다 (긴 AI 호출을 종료 때 끝내려 하지 않는다)
+    timeout-per-shutdown-phase: 30s
   application:
     name: nerdnam-api
   profiles:
@@ -63,6 +67,9 @@ spring:
 
 server:
   port: 8080
+  # SIGTERM 을 받으면 새 요청을 거절하고(readiness 도 Spring 이 내린다) 처리 중인 요청을 기다린다.
+  # drain 은 readiness 를 건드리지 않으므로(BE #50) 교체 직전 트래픽 정리는 여기에 맡긴다
+  shutdown: graceful
 
 management:
   # actuator 를 **공개 포트와 분리한 관리 포트**로 옮길 수 있다 (BE #44): MANAGEMENT_PORT 를 주면
