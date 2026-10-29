@@ -139,7 +139,7 @@ AI 작업 큐는 **메모리**에 있습니다. Pod 가 내려가면 큐가 사�
 남지만 아무도 다시 실행하지 않습니다. 그래서 교체 전에 비우고, 못 비운 것은 보이게 실패시킵니다.
 
 ```bash
-# 1) 새 작업 접수 중지 (readiness 도 내려가 트래픽이 끊긴다)
+# 1) 새 AI 작업 접수만 중지 — 로그인·조회·편집 등 다른 API 와 readiness 는 그대로다 (BE #50)
 curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -d '{"state":"drain"}'
 
 # 2) 비었는지 폴링 — drained 가 true 가 되면 교체한다
@@ -149,6 +149,10 @@ curl -s localhost:8081/actuator/aijob     # {"draining":true,"inFlight":2,"queue
 curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -d '{"state":"resume"}'
 ```
 
+- **readiness 를 내리지 않습니다.** 운영은 replica 1 이라, 내리면 Service endpoint 가 비어 **모든 API 가 503** 이
+  됩니다(최악 660초 동안). 교체 직전(SIGTERM)의 트래픽 정리는 Spring graceful shutdown 이 맡습니다
+  (`server.shutdown: graceful`, 단계별 30초 — `terminationGracePeriodSeconds: 90` 안).
+  그래서 전면 중단은 drain 대기 시간이 아니라 **Pod 교체 시간**으로 줄어듭니다.
 - 접수 중지 중에는 새 작업이 **503 `AI_UNAVAILABLE`**("잠시 뒤 다시 시도해 주세요")로 거절됩니다.
   계약에 있는 코드라 웹은 이미 이 상태를 다룹니다 — 사용자가 다시 누르면 교체된 Pod 가 받습니다.
 - **0 을 못 기다리고 내려가도** 끝내지 못한 작업은 종료 때 실패(`INTERNAL`)로 정리됩니다. 사용자는

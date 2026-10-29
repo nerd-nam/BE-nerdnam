@@ -33,7 +33,7 @@ class AiJobDrainTest extends ApiTestSupport {
     }
 
     @Test
-    void 접수를_멈추면_새_AI_작업을_503으로_거절한다() throws Exception {
+    void 접수를_멈추면_새_AI_작업만_503이고_다른_API와_readiness는_그대로다() throws Exception {
         Long member = newMember();
         Long project = readLong(postJson(member, """
                 {"title": "배포 중 접수 확인", "affiliation": "PERSONAL", "rawText": "원문 한 줄"}
@@ -44,6 +44,13 @@ class AiJobDrainTest extends ApiTestSupport {
         postJson(member, null, "/api/projects/{id}/split", project)
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.title").value("AI_UNAVAILABLE"));
+
+        // 막는 것은 새 AI 작업뿐이다 (BE #50). 운영은 replica 1 이라 readiness 를 내리면
+        // Service endpoint 가 비어 로그인·조회까지 전부 503 이 된다 — 조회·편집과 readiness 는 그대로다
+        getJson(member, "/api/projects/{id}", project).andExpect(status().isOk());
+        mvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
 
         drain.resume();   // 배포를 취소하면 다시 받는다
         postJson(member, null, "/api/projects/{id}/split", project).andExpect(status().isAccepted());

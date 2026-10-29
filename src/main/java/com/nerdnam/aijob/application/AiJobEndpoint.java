@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  *
  * <pre>
  * GET  /actuator/aijob                      지금 상태 (접수 중지 여부, 큐·실행 중 개수)
- * POST /actuator/aijob  {"state":"drain"}   새 작업 접수 중지 + readiness 내림
+ * POST /actuator/aijob  {"state":"drain"}   새 AI 작업 접수만 중지 (다른 API·readiness 는 그대로, BE #50)
  * POST /actuator/aijob  {"state":"resume"}  접수 재개
  * </pre>
  *
