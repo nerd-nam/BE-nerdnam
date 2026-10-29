@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
+import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -55,21 +56,27 @@ public class HttpAiServerClient implements AiServerClient {
         this.clients = all;
     }
 
-    public static HttpAiServerClient create(AiServerProperties properties) {
+    /**
+     * @param observations AI 호출마다 client span 을 만들고 {@code traceparent} 헤더로 trace 를 AI 서버에 넘긴다
+     *                     (BE #51). AI 서버가 이어 받아 Bedrock 호출까지 한 trace 가 된다
+     */
+    public static HttpAiServerClient create(AiServerProperties properties, ObservationRegistry observations) {
         Map<AiEndpoint, RestClient> clients = new EnumMap<>(AiEndpoint.class);
         for (AiEndpoint endpoint : AiEndpoint.values()) {
-            clients.put(endpoint, restClient(properties, properties.readTimeout(endpoint)));
+            clients.put(endpoint, restClient(properties, properties.readTimeout(endpoint), observations));
         }
         return new HttpAiServerClient(clients);
     }
 
-    private static RestClient restClient(AiServerProperties properties, Duration readTimeout) {
+    private static RestClient restClient(AiServerProperties properties, Duration readTimeout,
+                                         ObservationRegistry observations) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.connectTimeout());
         requestFactory.setReadTimeout(readTimeout);
         return RestClient.builder()
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
+                .observationRegistry(observations)
                 .build();
     }
 

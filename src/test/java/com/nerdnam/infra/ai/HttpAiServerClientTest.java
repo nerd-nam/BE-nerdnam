@@ -164,7 +164,7 @@ class HttpAiServerClientTest {
     @Test
     void 서버에_연결되지_않으면_GPU_꺼짐으로_본다() {
         HttpAiServerClient unreachable = HttpAiServerClient.create(properties("http://127.0.0.1:1",
-                Duration.ofMillis(500), Duration.ofSeconds(1)));
+                Duration.ofMillis(500), Duration.ofSeconds(1)), io.micrometer.observation.ObservationRegistry.NOOP);
 
         assertThatThrownBy(() -> unreachable.embed(List.of(EmbedItem.of("a")), EmbedPurpose.DOCUMENT))
                 .isInstanceOfSatisfying(AiServerUnavailableException.class,
@@ -192,7 +192,7 @@ class HttpAiServerClientTest {
             accepter.start();
 
             HttpAiServerClient stalling = HttpAiServerClient.create(
-                    properties("http://127.0.0.1:" + silent.getLocalPort(), Duration.ofSeconds(2), Duration.ofMillis(300)));
+                    properties("http://127.0.0.1:" + silent.getLocalPort(), Duration.ofSeconds(2), Duration.ofMillis(300)), io.micrometer.observation.ObservationRegistry.NOOP);
 
             assertThatThrownBy(() -> stalling.embed(List.of(EmbedItem.of("a")), EmbedPurpose.DOCUMENT))
                     .isInstanceOfSatisfying(AiServerUnavailableException.class,

@@ -176,3 +176,39 @@ curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -
 Settings → Secrets and variables → Actions → Variables
   AWS_CI_ROLE_ARN_API = arn:aws:iam::<계정>:role/nerdnam-dev-ci-api
 ```
+
+## 분산 추적 (BE #51)
+
+**Micrometer Tracing + OTLP**(Spring Boot 4.1 `spring-boot-starter-opentelemetry`)로 계측합니다.
+OpenTelemetry Java agent 는 쓰지 않습니다 — **둘을 같이 쓰면 span 이 두 번 생깁니다.** agent 대신 이쪽을 고른 이유는
+작업 실행기로의 trace 전파를 테스트로 확인할 수 있고, actuator 를 trace 에서 빼는 규칙을 코드로 둘 수 있어서입니다.
+
+**앱은 인프라가 넣는 표준 `OTEL_*` 변수만 읽습니다** (`OtelEnvironmentPostProcessor` 가 Spring 설정으로 옮김).
+주소·샘플링을 코드에 고정하지 않고, Spring 설정을 직접 주면 그쪽이 이깁니다.
+
+| 변수 | 옮기는 곳 |
+| --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `…/v1/traces` 를 붙여 OTLP 주소로. **없으면 내보내지 않는다**(로컬·테스트) |
+| `OTEL_TRACES_EXPORTER=none` | 내보내기 끔 |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `http/protobuf`(기본) / `grpc` |
+| `OTEL_TRACES_SAMPLER_ARG` | 샘플링 비율 (`parentbased_traceidratio` 는 Micrometer 기본 sampler 와 같다) |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | 리소스 속성 |
+
+| 무엇 | 어떻게 |
+| --- | --- |
+| 들어오는 HTTP | server span (Spring 기본) |
+| AI 호출 | RestClient client span, **`traceparent` 헤더로 AI 서버에 넘긴다** |
+| AI 작업 (비동기) | 실행기가 trace 를 넘기고(`ContextPropagatingTaskDecorator`), 작업 스레드는 별도 span `nerdnam.ai.job` 으로 접수 요청의 **자식**이 된다. 작업 id 는 span 속성(`job.id`)으로만 — 지표 label 로 쓰지 않는다 |
+| actuator | probe·`/actuator/prometheus` 는 trace 에서 뺀다 (10초마다 들어와 trace 를 채운다) |
+| 로그 | **`prod` 프로필**에서 한 줄 JSON, 줄마다 `trace_id`·`span_id`. 로컬은 사람이 읽기 쉬운 글자 로그 |
+| JDBC | span 을 만들지 않는다 — SQL 바인딩 값이 들어갈 일이 없다. 필요해지면 바인딩 값을 빼고 추가한다 |
+
+**넣지 않는 것**: 프롬프트·응답 본문, 이력서·JD 원문, 쿠키, OAuth 토큰. HTTP span 은 경로 템플릿·메서드·상태 코드만 담는다.
+
+로컬에서 보려면 수집기를 하나 띄우고 주소만 줍니다:
+
+```bash
+docker run -d --name otel-lgtm -p 3001:3000 -p 4318:4318 grafana/otel-lgtm
+OTEL_EXPORTER_OTLP_ENDPOINT=http://host.docker.internal:4318 docker compose up -d api
+# Grafana http://localhost:3001 → Explore → Tempo
+```
