@@ -133,6 +133,9 @@ readinessProbe: { httpGet: { path: /actuator/health/readiness, port: 8081 } }
 | `nerdnam_aijob_in_progress` | 진행 중으로 남은 작업 (DB 기준, 모든 Pod) |
 | `nerdnam_aijob_failed_recent` | 최근 5분 실패 수 |
 | `nerdnam_chunk_pending` · `nerdnam_chunk_pending_oldest_seconds` | 임베딩 대기 청크와 최장 대기 시간 — 쌓이면 검색 근거가 비어 판정이 전부 미충족이 된다 |
+| `http_server_requests_seconds_bucket` (`le` = 0.1·0.3·1·3·10·+Inf) | API 응답 시간 구간별 개수 (BE #54). p95 = `histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket[5m])))` — 구간 사이를 보간한 대략값이다. `uri` 는 경로 템플릿(`/api/projects/{projectId}`)이고 actuator 요청은 들어가지 않는다 |
+
+지표는 Prometheus 가 긁어 가는 것 하나뿐입니다. OpenTelemetry 스타터가 함께 켜는 OTLP 지표 전송은 꺼 두었습니다(`management.otlp.metrics.export.enabled: false`) — 켜 두면 받는 곳 없는 `localhost:4318` 로 1분마다 보내다 실패 로그를 남깁니다.
 ## 배포 절차 — AI 작업 비우기 (BE #45)
 
 AI 작업 큐는 **메모리**에 있습니다. Pod 가 내려가면 큐가 사라지고, DB 의 작업 행은 `IN_PROGRESS` 로
