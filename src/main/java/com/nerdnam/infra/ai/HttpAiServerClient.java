@@ -38,7 +38,7 @@ public class HttpAiServerClient implements AiServerClient {
 
     /** 오류 본문에서 usage 만 꺼내 읽는다 (응답 본문은 RestClient 가 읽는다) */
     private static final JsonMapper ERROR_BODY = JsonMapper.builder().build();
-    private static final int MAX_ATTEMPTS = 2;
+    static final int MAX_ATTEMPTS = 2;   // AiTimeoutBudgetTest 가 stale-after 계산에 쓴다
     private static final JsonMapper GUIDE_JSON = JsonMapper.builder().build();
 
     private final Map<AiEndpoint, RestClient> clients;
