@@ -10,6 +10,7 @@ import jakarta.annotation.PreDestroy;
 import com.nerdnam.infra.ai.AiCallContext;
 import com.nerdnam.infra.ai.AiServerUnavailableException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Optional;
@@ -101,11 +102,20 @@ public class AiJobs {
         return jobs.findRunningId(targetType, targetId, lockScope == null ? "" : lockScope);
     }
 
-    /** 서버 재시작 등으로 끝나지 못한 작업을 정리한다 (1분마다) */
+    /**
+     * 서버 재시작 등으로 끝나지 못한 작업을 정리한다 (1분마다).
+     *
+     * <p>이 Pod 가 들고 있는 작업은 뺀다. 시간은 접수 시각부터 재므로 큐에서 기다린 시간도 들어가는데,
+     * AI 서버가 한도에 걸리면 실패 대신 기다리게 되면서(ADR-0008) 작업이 길어져 큐 대기도 길어진다.
+     * 살아 있는 작업을 실패로 지우면 사용자는 "다시 시도"를 누르고, 지운 작업은 나중에 그대로 돌아
+     * Bedrock 을 한 번 더 부른다 — 한도에 걸린 바로 그때. 도는 중인 작업은 읽기 시간 제한이 끝을 보장한다.
+     */
     @Scheduled(fixedDelayString = "PT1M", initialDelayString = "PT1M")
     public void failStaleJobs() {
         Instant now = Instant.now();
-        Integer count = tx.execute(s -> jobs.failStale(now.minus(properties.staleAfter()), now));
+        // 빈 목록의 not in 은 DB 마다 달라서 없는 id 하나를 넣는다
+        List<Long> alive = inFlight.isEmpty() ? List.of(-1L) : List.copyOf(inFlight.keySet());
+        Integer count = tx.execute(s -> jobs.failStale(now.minus(properties.staleAfter()), now, alive));
         if (count != null && count > 0) {
             log.warn("Marked {} stale AI jobs as failed (TIMEOUT)", count);
         }
@@ -153,6 +163,15 @@ public class AiJobs {
     private <T, R> void runObserved(Long jobId, JobRequest request, T input, JobWork<T, R> work) {
         AiCallContext context = new AiCallContext(request.memberId(), request.targetType().name(), request.targetId());
         try {
+            // 큐에서 기다리는 사이 이미 끝난 작업(다른 Pod 의 정리 등)은 AI 를 부르지 않는다 — 결과를 써도 버려지고
+            // 토큰만 쓴다. 작업 행만 실패로 바뀌고 대상(분석·탭)은 그대로이므로 대상 정리만 한다
+            FailureCode alreadyFailed = tx.execute(s -> jobs.findById(jobId)
+                    .filter(job -> !job.isInProgress()).map(AiJob::getFailureCode).orElse(null));
+            if (alreadyFailed != null) {
+                log.warn("AI job {} was already {} before it started; skipping the AI call", jobId, alreadyFailed);
+                fail(jobId, alreadyFailed, work);
+                return;
+            }
             R result = AiCallContext.with(context, () -> work.call().apply(input));
             tx.executeWithoutResult(s -> {
                 Long resultId = work.apply().apply(result);
