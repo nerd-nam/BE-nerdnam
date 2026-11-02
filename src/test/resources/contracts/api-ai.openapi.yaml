@@ -1,6 +1,6 @@
-# SPEC-nerdnam/contracts/api-ai.openapi.yaml에서 복사 (C-04 v0.4.0, 2026-10-27, SPEC PR #87)
-# 추가만: LLM 응답 5개에 usage(input_tokens·output_tokens·llm_calls) 필수, 오류 본문에도 usage.
-# 계약이 바뀌면 다시 복사한다. 대조는 ApiAiContractTest가 한다.
+# AI 레포 scripts/export_contract.py 로 내보낸 C-04 v0.4.1 (2026-11-02, AI PR #46, 기획서 v1.65)
+# 0.4.0 에서 바뀐 것은 설명문의 타임아웃 줄(읽기 제한 120~300초, AI 는 10초 먼저 503·504)과 버전뿐이다.
+# 계약이 바뀌면 다시 내보낸다. 대조는 ApiAiContractTest·AiTimeoutBudgetTest 가 한다.
 openapi: 3.1.0
 info:
   title: nerdnam-ai
@@ -11,12 +11,12 @@ info:
 
     - 실패: 연결 실패·연결 시간 초과·503 → `GPU_UNAVAILABLE`(1회 재시도), 읽기 시간 초과 → `TIMEOUT`(재시도 안 함), AI 서버의 504 → `TIMEOUT`(재시도 안 함), 422 → `AI_ERROR`(재시도 안 함), 그 밖 5xx → `AI_ERROR`(1회 재시도).
 
-    - 타임아웃: 연결 2초. 읽기 `/health` 2초 · `/embed` 10초 · `/requirements/extract` 20초 · `/restructure` 30초 · `/match` 30초 · `/gap-guide` 20초 · `/guide` 120초.
+    - 타임아웃: 연결 2초. 읽기 `/health` 2초 · `/embed` 120초 · `/requirements/extract` 120초 · `/restructure` 180초 · `/match` 300초 · `/gap-guide` 120초 · `/guide` 300초. AI 서버는 엔드포인트마다 읽기 제한보다 10초 먼저 스스로 끝내고 503(대기·호출 한도)·504(생성 시간 초과)를 `usage`와 함께 준다.
 
     - `/guide`는 탭마다 1회 호출, JSON 응답(SSE 아님).
 
     '
-  version: 0.4.0
+  version: 0.4.1
 paths:
   /embed:
     post:
