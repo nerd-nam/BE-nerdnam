@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -70,6 +72,17 @@ class SessionLoginTest {
                 .andExpect(jsonPath("$.status").value("UP"));
         mvc.perform(get("/actuator/health/readiness")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    void 로그인하지_않은_요청은_세션을_만들지_않는다() throws Exception {
+        // 웹 서버가 쿠키 없이 부르면 Accept 가 */* 다. 예전에는 401 전에 이 요청을 세션에 저장해
+        // 요청마다 Redis 에 7일짜리 빈 세션이 쌓였다 (2026-11-03 NerdnamRedisMemoryHigh)
+        MockHttpServletRequest request = mvc.perform(get("/api/me").accept(MediaType.ALL))
+                .andExpect(status().isUnauthorized())
+                .andReturn().getRequest();
+
+        assertThat(request.getSession(false)).isNull();
     }
 
     @Test
