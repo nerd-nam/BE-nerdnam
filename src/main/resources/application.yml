@@ -32,7 +32,10 @@ spring:
       port: ${REDIS_PORT:6379}
       timeout: 2s               # 명령 하나의 제한 시간. Redis 가 느려도 요청이 매달리지 않게 짧게
   session:                      # 세션을 서버 메모리에 두면 재시작·서버 2대에서 로그인이 풀린다.
-    timeout: 7d                 # 저장소는 클래스패스로 정해진다 (spring-boot-starter-session-data-redis)
+    # 저장소는 클래스패스로 정해진다 (spring-boot-starter-session-data-redis).
+    # 기본 수명은 **로그인 전 세션** 용으로 짧게 둔다 — /oauth2/authorization/* 가 OAuth state 를 세션에 저장하므로
+    # 길면 이 주소를 반복해 부르는 것만으로 Redis 가 찬다(BE #62). 로그인하면 nerdnam.auth.session-timeout(7일)으로 늘린다
+    timeout: 10m
     data:                       # 쿠키는 브라우저를 닫으면 사라진다 (기본값 — 세션 쿠키)
       redis:
         namespace: nerdnam:session   # 키는 nerdnam:session:sessions:{세션 id}
@@ -125,6 +128,7 @@ nerdnam:
   auth:
     mode: session                     # session = 소셜 로그인 쿠키 세션 / header = X-Member-Id (local 전용)
     terms-version: "2026-10"          # 약관 버전. 바꾸면 모두에게 동의를 다시 받는다
+    session-timeout: 7d               # 로그인한 세션의 수명(마지막 요청부터). 로그인 전 세션은 spring.session.timeout(10분)
     web-origin: http://localhost:3000 # 웹 주소 (CORS)
     login-success-url: http://localhost:3000/
     login-failure-url: http://localhost:3000/?login=failed

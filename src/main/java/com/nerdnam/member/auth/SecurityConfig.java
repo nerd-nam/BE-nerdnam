@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .accessDeniedHandler((req, res, ex) -> problem(res, ErrorCode.FORBIDDEN)))
                 .oauth2Login(o -> o
                         .userInfoEndpoint(u -> u.userService(new MemberOAuth2UserService(members)))
-                        .successHandler((req, res, authentication) -> res.sendRedirect(auth.loginSuccessUrl()))
+                        .successHandler(new LoginSuccessHandler(auth))
                         .failureHandler((req, res, ex) -> res.sendRedirect(auth.loginFailureUrl())))
                 .logout(l -> l
                         .logoutUrl("/api/auth/logout")
