@@ -39,8 +39,10 @@ class AiTimeoutBudgetTest {
                 List.of(AiEndpoint.RESTRUCTURE),
                 List.of(AiEndpoint.GUIDE));
         for (List<AiEndpoint> job : jobs) {
+            // 호출마다 다시 보내기 전에 retry-delay 만큼 쉰다
             Duration worst = job.stream().map(ai::readTimeout).reduce(Duration.ZERO, Duration::plus)
-                    .multipliedBy(HttpAiServerClient.MAX_ATTEMPTS);
+                    .multipliedBy(HttpAiServerClient.MAX_ATTEMPTS)
+                    .plus(ai.retryDelay().multipliedBy((HttpAiServerClient.MAX_ATTEMPTS - 1L) * job.size()));
             assertThat(staleAfter).as("%s 의 최악 %s", job, worst).isGreaterThan(worst);
         }
     }

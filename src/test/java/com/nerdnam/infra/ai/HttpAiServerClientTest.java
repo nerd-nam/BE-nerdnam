@@ -127,6 +127,42 @@ class HttpAiServerClientTest {
     }
 
     @Test
+    void 다시_보내기_전에_한_번_쉰다() {
+        // 운영에서 AI 서버가 끊긴 연결로 0.0초 만에 503 을 줬고, 바로 다시 보낸 요청도 같은 순간 또 걸렸다 (AI-nerdnam#50)
+        List<Duration> pauses = new java.util.ArrayList<>();
+        RestClient.Builder builder = RestClient.builder().baseUrl(BASE);
+        MockRestServiceServer retryServer = MockRestServiceServer.bindTo(builder).build();
+        HttpAiServerClient patient = new HttpAiServerClient(builder.build(), Duration.ofSeconds(1), pauses::add);
+        retryServer.expect(once(), requestTo(BASE + "/embed")).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        retryServer.expect(once(), requestTo(BASE + "/embed")).andRespond(withSuccess("""
+                {"embedding_model": "titan", "dim": 2, "vectors": [[0.1, 0.2]]}
+                """, MediaType.APPLICATION_JSON));
+
+        patient.embed(List.of(EmbedItem.of("a")), EmbedPurpose.QUERY);
+
+        assertThat(pauses).containsExactly(Duration.ofSeconds(1));
+        retryServer.verify();
+    }
+
+    @Test
+    void 마지막_시도가_실패하면_더_쉬지_않고_다시_보내지_않는_실패는_쉬지_않는다() {
+        List<Duration> pauses = new java.util.ArrayList<>();
+        RestClient.Builder builder = RestClient.builder().baseUrl(BASE);
+        MockRestServiceServer retryServer = MockRestServiceServer.bindTo(builder).build();
+        HttpAiServerClient patient = new HttpAiServerClient(builder.build(), Duration.ofSeconds(1), pauses::add);
+        retryServer.expect(times(2), requestTo(BASE + "/embed")).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        retryServer.expect(once(), requestTo(BASE + "/embed")).andRespond(withStatus(HttpStatus.GATEWAY_TIMEOUT));
+
+        assertThatThrownBy(() -> patient.embed(List.of(EmbedItem.of("a")), EmbedPurpose.QUERY))
+                .isInstanceOf(AiServerUnavailableException.class);
+        assertThat(pauses).as("503 두 번: 첫 실패 뒤에만").containsExactly(Duration.ofSeconds(1));
+        assertThatThrownBy(() -> patient.embed(List.of(EmbedItem.of("a")), EmbedPurpose.QUERY))
+                .isInstanceOf(AiServerUnavailableException.class);
+        assertThat(pauses).as("504 는 다시 보내지 않으므로 쉬지도 않는다").hasSize(1);
+        retryServer.verify();
+    }
+
+    @Test
     void 요청이_잘못된_4xx는_다시_시도하지_않는다() {
         server.expect(once(), requestTo(BASE + "/embed"))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
@@ -208,14 +244,14 @@ class HttpAiServerClientTest {
     @Test
     void 엔드포인트마다_읽기_시간_제한이_다르다() {
         AiServerProperties properties = new AiServerProperties(BASE, false, Duration.ofSeconds(2),
-                Duration.ofSeconds(30), Map.of(AiEndpoint.GUIDE, Duration.ofSeconds(120)));
+                Duration.ofSeconds(30), Map.of(AiEndpoint.GUIDE, Duration.ofSeconds(120)), null);
 
         assertThat(properties.readTimeout(AiEndpoint.GUIDE)).isEqualTo(Duration.ofSeconds(120));
         assertThat(properties.readTimeout(AiEndpoint.MATCH)).isEqualTo(Duration.ofSeconds(30));   // 기본값
     }
 
     private static AiServerProperties properties(String baseUrl, Duration connect, Duration read) {
-        return new AiServerProperties(baseUrl, false, connect, read, Map.of());
+        return new AiServerProperties(baseUrl, false, connect, read, Map.of(), null);
     }
 
     @Test
