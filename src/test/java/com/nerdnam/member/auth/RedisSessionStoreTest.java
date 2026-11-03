@@ -52,7 +52,16 @@ class RedisSessionStoreTest {
                 .as("키 앞머리는 nerdnam:session (다른 서비스와 섞이지 않게)")
                 .isTrue();
         assertThat(redis.getExpire(KEY_PREFIX + id))
-                .as("7일 뒤 자동으로 지워진다 (spring.session.timeout)")
+                .as("새 세션(로그인 전)은 10분 뒤 지워진다 (spring.session.timeout, BE #62 후속)")
+                .isPositive().isLessThanOrEqualTo(Duration.ofMinutes(10).toSeconds());
+    }
+
+    @Test
+    void 로그인해서_수명을_늘린_세션은_7일_남는다() {
+        String id = saveLoggedIn(sessions, Duration.ofDays(7));   // LoginSuccessHandler 가 하는 일
+
+        assertThat(redis.getExpire(KEY_PREFIX + id))
+                .as("수명을 바꾸면 Redis 의 남은 시간도 따라간다")
                 .isGreaterThan(Duration.ofDays(6).toSeconds());
     }
 
@@ -64,6 +73,13 @@ class RedisSessionStoreTest {
 
         assertThat(sessions.findById(id)).isNull();
         assertThat(redis.hasKey(KEY_PREFIX + id)).isFalse();
+    }
+
+    private static <S extends Session> String saveLoggedIn(SessionRepository<S> repository, Duration timeout) {
+        S session = repository.createSession();
+        session.setMaxInactiveInterval(timeout);
+        repository.save(session);
+        return session.getId();
     }
 
     /** 저장소가 쓰는 세션 타입(S)이 무엇이든 만들고 저장한다 */

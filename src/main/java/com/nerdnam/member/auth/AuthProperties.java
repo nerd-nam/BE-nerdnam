@@ -1,5 +1,6 @@
 package com.nerdnam.member.auth;
 
+import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -10,10 +11,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param webOrigin       웹 주소 (CORS 허용, 쿠키를 함께 보내는 요청)
  * @param loginSuccessUrl 소셜 로그인 성공 후 돌아갈 웹 주소
  * @param loginFailureUrl 소셜 로그인 실패 후 돌아갈 웹 주소
+ * @param sessionTimeout  로그인한 세션의 수명(마지막 요청부터). 로그인 전 세션은 spring.session.timeout(짧게)을 쓰고,
+ *                        로그인에 성공하면 이 값으로 늘린다 (BE #62 후속)
  */
 @ConfigurationProperties(prefix = "nerdnam.auth")
 public record AuthProperties(String mode, String termsVersion, String webOrigin, String loginSuccessUrl,
-                             String loginFailureUrl) {
+                             String loginFailureUrl, Duration sessionTimeout) {
 
     public AuthProperties {
         mode = mode == null ? "session" : mode;
@@ -21,5 +24,6 @@ public record AuthProperties(String mode, String termsVersion, String webOrigin,
         webOrigin = webOrigin == null ? "http://localhost:3000" : webOrigin;
         loginSuccessUrl = loginSuccessUrl == null ? webOrigin + "/" : loginSuccessUrl;
         loginFailureUrl = loginFailureUrl == null ? webOrigin + "/?login=failed" : loginFailureUrl;
+        sessionTimeout = sessionTimeout == null ? Duration.ofDays(7) : sessionTimeout;
     }
 }
