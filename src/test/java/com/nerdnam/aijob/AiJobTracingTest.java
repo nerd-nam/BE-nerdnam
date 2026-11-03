@@ -7,6 +7,7 @@ import com.nerdnam.aijob.application.AiJobProperties;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
+import com.nerdnam.infra.ai.AiQueueProperties;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -33,7 +34,8 @@ class AiJobTracingTest {
             }
         });
         TaskExecutor executor = new AiJobConfig().aiJobExecutor(
-                new AiJobProperties(false, Duration.ofMinutes(20), 1));
+                new AiJobProperties(false, Duration.ofMinutes(20), 1, 0),
+                new AiQueueProperties(false, null, null, null, null, null, null, null, null, null));
         try {
             Observation request = Observation.start("http.server.requests", registry);
             CompletableFuture<Observation> seenInWorker = new CompletableFuture<>();

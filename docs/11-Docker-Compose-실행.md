@@ -69,6 +69,18 @@ NERDNAM_AI_BASE_URL=http://host.docker.internal:8000
 
 `host.docker.internal`은 컨테이너에서 호스트 PC로 가는 주소다. API 컨테이너 안의 `localhost`는 API 컨테이너 자신이다. Linux에서도 주소를 찾도록 `host-gateway`를 설정했다. AI 서버는 Docker에서 접근 가능한 인터페이스에서 수신해야 하며, Linux에서는 `127.0.0.1`에만 바인딩한 서버에 연결되지 않는다.
 
+AI 호출을 HTTP 대신 Redis Streams 큐로 보내려면(ADR-0009 제안, BE #66 — 기본 꺼짐) 큐 전용 Redis 를 따로 두고 아래를 준다. 세션 Redis(`REDIS_HOST`)와 다른 서버다. 동작은 `docs/06` "큐 경로".
+
+```dotenv
+AI_QUEUE_ENABLED=true
+AI_QUEUE_REDIS_HOST=ai-queue-redis
+AI_QUEUE_REDIS_PORT=6379
+AI_QUEUE_REDIS_USERNAME=api          # ACL 을 쓰면
+AI_QUEUE_REDIS_PASSWORD=...
+```
+
+결과 스트림 이름은 `ai:res:{HOSTNAME}` 이다(Kubernetes 는 Pod 이름). 문제가 생기면 `AI_QUEUE_ENABLED=false` 로 HTTP 경로로 돌아간다.
+
 FastAPI의 `AI_MODE=stub`은 가짜 응답, `AI_MODE=real`은 실제 모델 모드다. 실제 모델을 Mac에서 실행할 때는 AI README와 SPEC 5.5에 따라 읽기 제한도 별도로 조정해야 한다. AI 컨테이너·모델 다운로드는 이 Compose에 포함하지 않는다.
 
 ## 포트 충돌과 IDE 개발
@@ -160,7 +172,7 @@ curl -X POST localhost:8081/actuator/aijob -H 'Content-Type: application/json' -
   계약에 있는 코드라 웹은 이미 이 상태를 다룹니다 — 사용자가 다시 누르면 교체된 Pod 가 받습니다.
 - **0 을 못 기다리고 내려가도** 끝내지 못한 작업은 종료 때 실패(`INTERNAL`)로 정리됩니다. 사용자는
   "만드는 중"에 갇히지 않고 바로 "다시 시도"를 봅니다 — 그러지 않으면 오래 멈춘 작업 정리
-  (`stale-after` 20분)를 기다려야 합니다.
+  (`stale-after` 25분)를 기다려야 합니다.
 - 영속 큐(재시작 후 재개)는 **하지 않았습니다.** 지금 작업은 모두 사용자가 버튼을 눌러 시작하고 다시
   시도할 수 있어서, 끊긴 것을 보이게 실패시키는 쪽이 더 정직합니다. 자동 재개가 필요해지면 그때
   outbox 를 넣습니다.
@@ -221,6 +233,7 @@ OpenTelemetry Java agent 는 쓰지 않습니다 — **둘을 같이 쓰면 span
 | --- | --- |
 | 들어오는 HTTP | server span (Spring 기본) |
 | AI 호출 | RestClient client span, **`traceparent` 헤더로 AI 서버에 넘긴다** |
+| AI 호출 (큐 경로, BE #66) | span `nerdnam.ai.queue`(`ai.operation`·`ai.stream`), **`traceparent` 를 큐 메시지 필드로 넘긴다** — AI 의 `queue.wait`·Bedrock span 이 이어진다 |
 | AI 작업 (비동기) | 실행기가 trace 를 넘기고(`ContextPropagatingTaskDecorator`), 작업 스레드는 별도 span `nerdnam.ai.job` 으로 접수 요청의 **자식**이 된다. 작업 id 는 span 속성(`job.id`)으로만 — 지표 label 로 쓰지 않는다 |
 | actuator | probe·`/actuator/prometheus` 는 trace 에서 뺀다 (10초마다 들어와 trace 를 채운다) |
 | 로그 | **`prod` 프로필**에서 한 줄 JSON, 줄마다 `trace_id`·`span_id`. 로컬은 사람이 읽기 쉬운 글자 로그 |
