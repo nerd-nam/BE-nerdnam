@@ -180,6 +180,26 @@ Settings → Secrets and variables → Actions → Variables
   AWS_CI_ROLE_ARN_API = arn:aws:iam::<계정>:role/nerdnam-dev-ci-api
 ```
 
+## 부하 시험 데이터 만들기 (BE #60, ADR-0008)
+
+k6 로 AI 작업 몰림을 재현할 때 쓸 시험 데이터를 **API 로** 만듭니다(`scripts/loadtest-seed.sh`). DB 에 직접 넣지 않습니다 — 확정해야 청크가 생기고, 임베딩도 AI 를 거쳐야 끝납니다. 실제 AI 를 부르므로 Bedrock 비용이 듭니다.
+
+```bash
+# 1) 시험용 구글·카카오 계정으로 웹에서 로그인하고 약관에 동의한다 → 브라우저 개발자 도구에서 SESSION 쿠키 값을 복사
+# 2) 관리 포트를 연다 (임베딩 완료를 nerdnam_chunk_pending 으로 기다리려고)
+kubectl -n <네임스페이스> port-forward deploy/<API 배포 이름> 8081:8081
+# 3) 만든다 — 프로젝트 3개 확정 → 공고 10개(요건 20개) → 공고마다 분석 1번
+BE_URL=https://<운영 주소> SESSION_COOKIE='<값>' SEED_CONFIRM=1 MANAGEMENT_URL=http://localhost:8081 \
+  bash scripts/loadtest-seed.sh
+# 마지막 줄의 POSTING_IDS=… 를 k6 에 넘긴다
+```
+
+- 개수는 `PROJECTS`·`POSTINGS`·`REQUIREMENTS`(30 이하) 로 바꿉니다. 쿠키는 출력하지 않고, 임시 쿠키 파일은 끝나면 지웁니다.
+- 쓰기 요청에 필요한 CSRF 토큰은 스크립트가 `GET /api/auth/csrf` 로 받아 붙입니다(k6 도 같은 방법이 필요합니다).
+- 운영 주소는 `SEED_CONFIRM=1` 없이는 멈춥니다. 헤더 인증(`MEMBER_ID`)은 localhost 에서만 씁니다.
+- **시험 뒤 정리:** 시험 계정을 탈퇴(`DELETE /api/me`)하면 프로젝트·공고·분석·AI 호출 기록까지 모두 지워집니다. 비용 측정을 다 본 뒤에 지우세요.
+- 로컬 확인: `NERDNAM_AUTH_MODE=header`·`NERDNAM_AI_STUB=true` 컨테이너에 `BE_URL=http://localhost:18080 MEMBER_ID=1 EMBED_WAIT=1` 로 2026-11-03 에 통과했습니다. 세션 쿠키 경로는 실제 로그인이 필요해 CSRF 토큰 처리(토큰 있으면 401, 없으면 403)까지만 확인했습니다.
+
 ## 분산 추적 (BE #51)
 
 **Micrometer Tracing + OTLP**(Spring Boot 4.1 `spring-boot-starter-opentelemetry`)로 계측합니다.
