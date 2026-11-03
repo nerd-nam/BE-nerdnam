@@ -207,8 +207,9 @@ class QueueAiServerClientTest {
     @Test
     void AI_작업_안의_호출은_호출_상한이_남아도_작업_기한까지만_기다린다() {
         // 분석은 AI 를 4번 차례로 부른다. 호출마다 20분씩이면 사용자는 "분석 중"을 훨씬 오래 본다 (BE #66)
+        // 기한은 넉넉히 3초 — 느린 CI 에서 첫 호출 준비(직렬화 등)만으로 1초가 지나 "넣지 않음"이 될 수 있다
         worker = new FakeAiWorker(uri(), r -> List.of());
-        QueueAiServerClient client = client(props(Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(1)));
+        QueueAiServerClient client = client(props(Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(3)));
         long started = System.nanoTime();
 
         inJob(Instant.now(), () -> assertThatThrownBy(
@@ -216,8 +217,9 @@ class QueueAiServerClientTest {
                 .isInstanceOfSatisfying(AiServerUnavailableException.class,
                         e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.TIMEOUT)));
 
-        assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(10));   // 호출 상한은 1분
-        assertThat(worker.received).hasSize(1);
+        assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(15));   // 호출 상한은 1분
+        // 가짜 작업자는 따로 읽으므로 받았는지는 기다렸다 본다 (넣은 것은 한 번 — 다시 넣기는 1분 뒤)
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(worker.received).hasSize(1));
     }
 
     @Test
