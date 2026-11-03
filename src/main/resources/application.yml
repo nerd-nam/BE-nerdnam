@@ -1,4 +1,8 @@
 spring:
+  task:
+    scheduling:
+      pool:
+        size: 2   # @Scheduled 2개(오래 멈춘 작업 정리·임베딩 다시 시도). 임베딩이 오래 기다려도 작업 정리가 밀리지 않게
   lifecycle:
     # Kubernetes terminationGracePeriodSeconds(90초) 안에 끝나야 한다. 남은 AI 작업은 이 단계 뒤
     # @PreDestroy 에서 실패로 정리된다 (긴 AI 호출을 종료 때 끝내려 하지 않는다)
@@ -168,12 +172,30 @@ nerdnam:
       match: 300s                     # 요건마다 LLM 을 병렬로 부른다. 요건 20개에서 41~63초 — 요건 수에 비례해 늘어난다
       gap-guide: 120s                 # 미충족 요건만 대상이라 match 보다 적다. 실패하면 기본 문구로 대신한다 (ADR-0003)
       guide: 300s                     # 탭 5개를 한꺼번에 만든다 (기획서 v1.59)
+    # AI 호출을 HTTP 대신 Redis Streams 큐로 보낸다 (ADR-0009, BE #66). AI 가 한도 안에서 꺼내 가고, 한도에 걸리면
+    # 실패 대신 기다린다. 위 read-timeouts 는 HTTP 경로에만 쓴다. 문제가 생기면 AI_QUEUE_ENABLED=false 로 되돌린다
+    queue:
+      enabled: ${AI_QUEUE_ENABLED:false}
+      host: ${AI_QUEUE_REDIS_HOST:localhost}   # 큐 전용 Redis — 세션 Redis 와 다른 서버 (밀려도 로그인이 막히지 않게)
+      port: ${AI_QUEUE_REDIS_PORT:6379}
+      username: ${AI_QUEUE_REDIS_USERNAME:}
+      password: ${AI_QUEUE_REDIS_PASSWORD:}
+      timeout: 2s
+      consumer: ${HOSTNAME:}            # 결과 스트림 ai:res:{Pod 이름}
+      resend-after: 5m                  # 이만큼 결과가 없으면 같은 id 로 다시 넣는다 (큐 Redis 재시작으로 사라졌을 때)
+      wait-timeout: 20m                 # 호출 하나를 이보다 오래 기다리지 않는다 → TIMEOUT. 재시험 뒤 정한다
+      result-ttl: 1h
+      max-backlog: 200                  # 사용자가 기다리는 요청 스트림(llm·embed)에 이만큼 쌓이면 새 AI 작업을 503 으로 거절한다.
+                                        # Nova 분당 20회 기준 약 10분 대기다. AI 가 처리한 요청을 지운다는 전제(SPEC #101)
   ai-job:
     sync: false                       # true 면 AI 작업을 요청 스레드에서 바로 실행 (테스트용)
     # 이보다 오래 진행 중인 작업은 실패(TIMEOUT)로 정리. **(읽기 시간 제한의 합) × 시도 횟수 2 보다 커야 한다** —
     # 분석 한 건은 extract 120 + embed 120 + match 300 + gap-guide 120 = 660초이고, 503 이면 호출마다 1회
     # 다시 보낸다. AI 서버는 읽기 제한 직전까지 기다렸다 503 을 줄 수 있으므로(SPEC 이슈 #91) 최악은 1,320초(22분).
-    # 작아지면 아직 돌고 있는 작업을 실패로 지운다. AiTimeoutBudgetTest 가 이 관계를 검사한다
+    # 작아지면 아직 돌고 있는 작업을 실패로 지운다. AiTimeoutBudgetTest 가 이 관계를 검사한다.
+    # 시간은 "마지막으로 살아 있던 시각"(작업을 든 Pod 가 1분마다 남긴다, 없으면 접수 시각)부터 잰다 (BE #66)
     stale-after: 25m
     threads: 4                        # AI 작업 스레드 수. 늘리면 Bedrock 동시 호출이 늘어 한도에 더 걸리므로
                                       # 시간 제한을 늘린 지금은 그대로 둔다 (대기는 큐 200칸이 받는다)
+    queue-threads: 64                 # AI 호출을 큐로 보낼 때의 작업 스레드 수 (가상 스레드). 기다리기만 하므로 OS 스레드를
+                                      # 쥐지 않는다 — 한 Pod 가 동시에 맡는 작업 수의 상한이다

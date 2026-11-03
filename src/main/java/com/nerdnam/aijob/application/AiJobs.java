@@ -7,12 +7,14 @@ import com.nerdnam.aijob.domain.TargetType;
 import com.nerdnam.common.error.BusinessException;
 import com.nerdnam.common.error.ErrorCode;
 import jakarta.annotation.PreDestroy;
+import com.nerdnam.infra.ai.AiBacklog;
 import com.nerdnam.infra.ai.AiCallContext;
 import com.nerdnam.infra.ai.AiServerUnavailableException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.Optional;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
@@ -23,6 +25,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,6 +49,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class AiJobs {
 
     private static final Logger log = LoggerFactory.getLogger(AiJobs.class);
+    /** 몰려서 받지 않을 때. 계약의 AI_UNAVAILABLE(503)이라 웹은 이미 "잠시 뒤 다시 시도"를 띄운다 */
+    static final String BUSY_MESSAGE = "지금 AI 요청이 많아 시작하지 못했어요. 입력한 내용은 그대로 남아 있으니 잠시 후 다시 시도해 주세요.";
 
     private final AiJobRepository jobs;
     private final TransactionTemplate tx;
@@ -53,18 +58,21 @@ public class AiJobs {
     private final AiJobProperties properties;
     private final AiJobDrain drain;
     private final ObservationRegistry observations;
+    private final AiBacklog backlog;
     /** 이 Pod 가 접수해 아직 끝내지 못한 작업. 종료 때 실패로 정리한다 (BE #45) */
     private final Map<Long, JobWork<?, ?>> inFlight = new ConcurrentHashMap<>();
 
     public AiJobs(AiJobRepository jobs, PlatformTransactionManager transactionManager,
                   @Qualifier("aiJobExecutor") TaskExecutor executor, AiJobProperties properties,
-                  AiJobDrain drain, ObjectProvider<ObservationRegistry> observations) {
+                  AiJobDrain drain, ObjectProvider<ObservationRegistry> observations,
+                  ObjectProvider<AiBacklog> backlog) {
         this.jobs = jobs;
         this.tx = new TransactionTemplate(transactionManager);
         this.executor = executor;
         this.properties = properties;
         this.drain = drain;
         this.observations = observations.getIfAvailable(() -> ObservationRegistry.NOOP);
+        this.backlog = backlog.getIfAvailable(() -> AiBacklog.NONE);
         drain.inFlightSource(inFlight::size);
     }
 
@@ -74,6 +82,11 @@ public class AiJobs {
         // 웹은 이미 "잠시 뒤 다시 시도해 주세요"를 띄운다 — 사용자가 다시 누르면 새 Pod 가 받는다
         if (drain.draining()) {
             throw new BusinessException(ErrorCode.AI_UNAVAILABLE, ErrorCode.AI_UNAVAILABLE.defaultMessage());
+        }
+        // 몰렸으면 작업을 만들기 전에 거절한다 (BE #67). 만든 뒤 실패시키면 사용자는 "진행 중"을 보다가 실패를 받고,
+        // 실행기가 꽉 찬 경우는 INTERNAL 로 남아 원인이 가려진다
+        if (saturated() || backlog.full()) {
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE, BUSY_MESSAGE);
         }
         Accepted<T> accepted = accept(request, work);
         inFlight.put(accepted.jobId(), work);
@@ -105,6 +118,10 @@ public class AiJobs {
     /**
      * 서버 재시작 등으로 끝나지 못한 작업을 정리한다 (1분마다).
      *
+     * <p>먼저 이 Pod 가 들고 있는 작업에 "살아 있음"을 남긴다. 정리는 Pod 마다 돌고 각 Pod 는 자기 작업만 알므로,
+     * 이걸 남기지 않으면 다른 Pod 가 아직 기다리는 작업을 지운다(배포 중 2대, AI 큐 대기 — BE #66).
+     * 그래서 시간은 마지막으로 살아 있던 시각부터 잰다.
+     *
      * <p>이 Pod 가 들고 있는 작업은 뺀다. 시간은 접수 시각부터 재므로 큐에서 기다린 시간도 들어가는데,
      * AI 서버가 한도에 걸리면 실패 대신 기다리게 되면서(ADR-0008) 작업이 길어져 큐 대기도 길어진다.
      * 살아 있는 작업을 실패로 지우면 사용자는 "다시 시도"를 누르고, 지운 작업은 나중에 그대로 돌아
@@ -115,13 +132,30 @@ public class AiJobs {
         Instant now = Instant.now();
         // 빈 목록의 not in 은 DB 마다 달라서 없는 id 하나를 넣는다
         List<Long> alive = inFlight.isEmpty() ? List.of(-1L) : List.copyOf(inFlight.keySet());
-        Integer count = tx.execute(s -> jobs.failStale(now.minus(properties.staleAfter()), now, alive));
+        Integer count = tx.execute(s -> {
+            jobs.markAlive(alive, now);
+            return jobs.failStale(now.minus(properties.staleAfter()), now, alive);
+        });
         if (count != null && count > 0) {
             log.warn("Marked {} stale AI jobs as failed (TIMEOUT)", count);
         }
     }
 
     // ------------------------------------------------------------------ 내부
+
+    /** 이 Pod 의 작업 스레드와 대기 칸이 모두 찼는지. 넘기면 실행기가 거절해 작업이 INTERNAL 로 실패한다 */
+    private boolean saturated() {
+        if (!(executor instanceof ThreadPoolTaskExecutor pool)) {
+            return false;   // 테스트의 동기 실행기 등
+        }
+        ThreadPoolExecutor e = pool.getThreadPoolExecutor();
+        boolean full = e.getActiveCount() >= e.getMaximumPoolSize() && e.getQueue().remainingCapacity() == 0;
+        if (full) {
+            log.warn("AI job executor is full ({} running, {} queued); rejecting new AI jobs",
+                    e.getActiveCount(), e.getQueue().size());
+        }
+        return full;
+    }
 
     private <T> Accepted<T> accept(JobRequest request, JobWork<T, ?> work) {
         try {

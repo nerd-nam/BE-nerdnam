@@ -79,10 +79,39 @@ class AiJobStaleTest extends ApiTestSupport {
         assertThat(status(jobId)).isEqualTo("FAILED");
     }
 
+    @Test
+    void 다른_Pod_가_기다리는_작업은_살아_있음이_남아_있어_지우지_않는다() {
+        // 배포 중 2대이거나 AI 큐 대기가 길 때 (BE #66). 정리는 Pod 마다 돌고 자기 작업만 안다
+        AiJobs podA = newPod();
+        Long jobId = startJob(podA);
+        requestedLongAgo(jobId);
+
+        podA.failStaleJobs();              // A 가 1분마다 "살아 있음"을 남긴다
+        newPod().failStaleJobs();          // B 의 정리
+
+        assertThat(status(jobId)).isEqualTo("IN_PROGRESS");
+        queued.getFirst().run();
+        assertThat(status(jobId)).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void 살아_있음이_오래전에_멈춘_작업은_정리한다() {
+        AiJobs podA = newPod();
+        Long jobId = startJob(podA);
+        podA.failStaleJobs();
+        jdbc.sql("UPDATE app.ai_job SET requested_at = now() - interval '2 hours', alive_at = now() - interval '1 hour'"
+                + " WHERE id = ?").param(jobId).update();   // 그 뒤 A 가 내려갔다
+
+        newPod().failStaleJobs();
+
+        assertThat(status(jobId)).isEqualTo("FAILED");
+    }
+
     private AiJobs newPod() {
         StaticListableBeanFactory none = new StaticListableBeanFactory();
-        return new AiJobs(jobs, transactionManager, queued::add, new AiJobProperties(false, STALE_AFTER, 4),
-                new AiJobDrain(), none.getBeanProvider(ObservationRegistry.class));
+        return new AiJobs(jobs, transactionManager, queued::add, new AiJobProperties(false, STALE_AFTER, 4, 0),
+                new AiJobDrain(), none.getBeanProvider(ObservationRegistry.class),
+                none.getBeanProvider(com.nerdnam.infra.ai.AiBacklog.class));
     }
 
     private Long startJob(AiJobs pod) {

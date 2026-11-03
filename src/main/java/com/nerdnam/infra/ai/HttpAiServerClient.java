@@ -124,7 +124,12 @@ public class HttpAiServerClient implements AiServerClient {
                 .body(request)
                 .retrieve()
                 .body(EmbedResponse.class));
-        if (response == null || response.vectors() == null || response.vectors().size() != items.size()) {
+        return embeddings(response, items.size());
+    }
+
+    /** /embed 응답 검사·변환. 큐 경로({@link QueueAiServerClient})도 같은 규칙을 쓴다 */
+    static Embeddings embeddings(EmbedResponse response, int expected) {
+        if (response == null || response.vectors() == null || response.vectors().size() != expected) {
             throw embedError("벡터 개수가 요청한 텍스트 수와 달라요.");
         }
         if (response.dim() != null && response.vectors().stream().anyMatch(v -> v.size() != response.dim())) {
