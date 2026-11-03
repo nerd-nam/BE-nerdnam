@@ -36,6 +36,8 @@ public class AiQueue implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(AiQueue.class);
     private static final Duration READ_BLOCK = Duration.ofSeconds(1);
     private static final int READ_COUNT = 100;
+    /** 결과 메시지 필드 (C-04 v0.5.0 QueueResult, AiQueueContractTest 가 대조한다) */
+    static final List<String> RESULT_FIELDS = List.of("id", "status", "body", "detail", "usage");
 
     private final AiQueueProperties properties;
     private final RedisClient client;
