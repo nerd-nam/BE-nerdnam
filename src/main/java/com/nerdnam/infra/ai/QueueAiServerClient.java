@@ -53,6 +53,8 @@ public class QueueAiServerClient implements AiServerClient {
     static final String LLM = "ai:req:llm";
     static final String EMBED = "ai:req:embed";
     static final String EMBED_BG = "ai:req:embed-bg";
+    /** 요청 메시지 필드 (C-04 v0.5.0 QueueRequest, AiQueueContractTest 가 대조한다) */
+    static final List<String> REQUEST_FIELDS = List.of("id", "op", "body", "traceparent", "enqueued_at", "reply_to");
 
     private final AiQueue queue;
     private final AiQueueProperties properties;

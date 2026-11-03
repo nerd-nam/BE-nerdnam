@@ -1,6 +1,3 @@
-# AI 레포 scripts/export_contract.py 로 내보낸 C-04 v0.4.1 (2026-11-02, AI PR #46, 기획서 v1.65)
-# 0.4.0 에서 바뀐 것은 설명문의 타임아웃 줄(읽기 제한 120~300초, AI 는 10초 먼저 503·504)과 버전뿐이다.
-# 계약이 바뀌면 다시 내보낸다. 대조는 ApiAiContractTest·AiTimeoutBudgetTest 가 한다.
 openapi: 3.1.0
 info:
   title: nerdnam-ai
@@ -15,8 +12,10 @@ info:
 
     - `/guide`는 탭마다 1회 호출, JSON 응답(SSE 아님).
 
+    - Redis 큐 경로(ADR-0009, `AI_QUEUE_ENABLED`): 경로가 아니라 스트림 메시지라 형식만 `components.schemas`의 `QueueRequest`(BE → AI)·`QueueResult`(AI → BE)에 둔다. 큐 경로에는 요청 마감이 없고, 503은 AI가 다시 하며 504는 502로 온다.
+
     '
-  version: 0.4.1
+  version: 0.5.0
 paths:
   /embed:
     post:
@@ -1372,3 +1371,89 @@ components:
       - msg
       - type
       title: ValidationError
+    QueueRequest:
+      description: 'BE → AI: XADD ai:req:llm(LLM op) / ai:req:embed(embed, purpose=query) / ai:req:embed-bg(embed, purpose=document)'
+      properties:
+        id:
+          description: '`{op}:{uuid}`. 결과를 기다리는 동안 다시 넣어도 같은 값(AI가 한 번만 실행)'
+          title: Id
+          type: string
+        op:
+          description: HTTP 경로에서 `/`를 뺀 것
+          enum:
+          - requirements/extract
+          - restructure
+          - match
+          - gap-guide
+          - guide
+          - embed
+          title: Op
+          type: string
+        body:
+          description: 그 경로의 HTTP 요청 JSON 그대로
+          title: Body
+          type: string
+        traceparent:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: W3C traceparent. AI가 trace를 이어 붙인다
+          title: Traceparent
+        enqueued_at:
+          description: ISO-8601 UTC. 다시 넣어도 처음 값. 없으면 422
+          title: Enqueued At
+          type: string
+        reply_to:
+          description: 결과를 넣을 스트림 `ai:res:{BE Pod}`
+          title: Reply To
+          type: string
+      required:
+      - id
+      - op
+      - body
+      - enqueued_at
+      - reply_to
+      title: QueueRequest
+      type: object
+    QueueResult:
+      description: 'AI → BE: XADD {reply_to}. 503은 AI가 다시 하므로 오지 않는다(504는 502로)'
+      properties:
+        id:
+          description: 요청과 같은 값
+          title: Id
+          type: string
+        status:
+          description: 200 성공 / 422 요청 검증 실패 / 502 모델·형식·설정 오류·생성 시간 초과
+          enum:
+          - '200'
+          - '422'
+          - '502'
+          title: Status
+          type: string
+        body:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: '200: 그 경로의 HTTP 응답 JSON 그대로'
+          title: Body
+        detail:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: '422·502: 실패 이유(검증 오류 목록은 JSON 문자열)'
+          title: Detail
+        usage:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          description: Usage JSON 문자열(다시 한 시도까지 합계). 모르면 없음
+          title: Usage
+      required:
+      - id
+      - status
+      title: QueueResult
+      type: object
