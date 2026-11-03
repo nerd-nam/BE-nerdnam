@@ -12,13 +12,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param connectTimeout 연결 시간 제한. GPU 서버가 꺼져 있으면 빨리 실패하도록 짧게 (ADR-0001: 2초)
  * @param readTimeout    응답 시간 제한의 기본값 (readTimeouts 에 없는 엔드포인트)
  * @param readTimeouts   엔드포인트별 응답 시간 제한. 생성 단계마다 걸리는 시간이 달라 따로 둔다 (기획서 5.5)
+ * @param retryDelay     연결 실패·503·5xx 를 다시 보내기 전에 쉬는 시간. 비우면 1초 (AI-nerdnam#50)
  */
 @ConfigurationProperties(prefix = "nerdnam.ai")
 public record AiServerProperties(String baseUrl, boolean stub, Duration connectTimeout, Duration readTimeout,
-                                 Map<AiEndpoint, Duration> readTimeouts) {
+                                 Map<AiEndpoint, Duration> readTimeouts, Duration retryDelay) {
 
     public AiServerProperties {
         readTimeouts = readTimeouts == null ? Map.of() : Map.copyOf(readTimeouts);
+        retryDelay = retryDelay == null ? Duration.ofSeconds(1) : retryDelay;
     }
 
     /** 이 엔드포인트의 응답 시간 제한. 따로 정하지 않았으면 기본값 */

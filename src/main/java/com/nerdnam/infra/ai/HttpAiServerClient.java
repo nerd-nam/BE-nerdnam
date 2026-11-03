@@ -42,18 +42,38 @@ public class HttpAiServerClient implements AiServerClient {
     private static final JsonMapper GUIDE_JSON = JsonMapper.builder().build();
 
     private final Map<AiEndpoint, RestClient> clients;
+    /** 다시 시도하기 전에 쉬는 시간. 0 이면 바로 (테스트) */
+    private final Duration retryDelay;
+    private final Pause pause;
 
-    HttpAiServerClient(Map<AiEndpoint, RestClient> clients) {
-        this.clients = new EnumMap<>(clients);
+    /** 쉬는 방법. 테스트는 실제로 쉬지 않고 몇 번·얼마나 쉬었는지만 본다 */
+    interface Pause {
+        void sleep(Duration duration) throws InterruptedException;
     }
 
-    /** 테스트용 — 모든 엔드포인트에 같은 클라이언트를 쓴다 */
+    HttpAiServerClient(Map<AiEndpoint, RestClient> clients, Duration retryDelay) {
+        this.clients = new EnumMap<>(clients);
+        this.retryDelay = retryDelay;
+        this.pause = Thread::sleep;
+    }
+
+    /** 테스트용 — 모든 엔드포인트에 같은 클라이언트를 쓰고, 다시 시도할 때 쉬지 않는다 */
     public HttpAiServerClient(RestClient restClient) {
+        this(restClient, Duration.ZERO);
+    }
+
+    HttpAiServerClient(RestClient restClient, Duration retryDelay) {
+        this(restClient, retryDelay, Thread::sleep);
+    }
+
+    HttpAiServerClient(RestClient restClient, Duration retryDelay, Pause pause) {
         Map<AiEndpoint, RestClient> all = new EnumMap<>(AiEndpoint.class);
         for (AiEndpoint endpoint : AiEndpoint.values()) {
             all.put(endpoint, restClient);
         }
         this.clients = all;
+        this.retryDelay = retryDelay;
+        this.pause = pause;
     }
 
     /**
@@ -65,7 +85,7 @@ public class HttpAiServerClient implements AiServerClient {
         for (AiEndpoint endpoint : AiEndpoint.values()) {
             clients.put(endpoint, restClient(properties, properties.readTimeout(endpoint), observations));
         }
-        return new HttpAiServerClient(clients);
+        return new HttpAiServerClient(clients, properties.retryDelay());
     }
 
     private static RestClient restClient(AiServerProperties properties, Duration readTimeout,
@@ -186,12 +206,32 @@ public class HttpAiServerClient implements AiServerClient {
                 AiUsageTally.addFailedAttempt(usageOf(e));
                 log.warn("AI server call failed ({} attempt {}/{}, {}): {}",
                         endpoint.operation(), attempt, MAX_ATTEMPTS, reason, e.getMessage());
-                if (!retryable(e, reason)) {
+                if (!retryable(e, reason) || attempt == MAX_ATTEMPTS || !pauseBeforeRetry()) {
                     break;
                 }
             }
         }
         throw new AiServerUnavailableException(reason, endpoint.operation(), last);
+    }
+
+    /**
+     * 다시 보내기 전에 잠깐 쉰다. 바로 보내면 같은 순간의 같은 원인에 또 걸린다 — 2026-11-03 운영에서 AI 서버가
+     * 끊긴 Bedrock 연결을 집어 0.0초 만에 503 을 줬고, BE 가 0.01초 뒤 다시 보낸 요청도 또 끊긴 연결에 걸려
+     * 작업이 실패했다(AI-nerdnam#50). 연결 실패·503 은 대개 몇 초 안에 풀린다.
+     *
+     * @return 계속 시도해도 되면 true. 작업 스레드가 끊겼으면(종료 중) false
+     */
+    private boolean pauseBeforeRetry() {
+        if (retryDelay.isZero()) {
+            return true;
+        }
+        try {
+            pause.sleep(retryDelay);
+            return true;
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     /**
