@@ -32,6 +32,8 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>큐 대기는 실패가 아니다. 다만 끝없이 기다리지 않는다.
  * <ul>
+ *   <li>AI 작업 안의 호출은 <b>작업 접수부터 {@code job-timeout}</b> 안에 끝낸다. 분석은 AI 를 4번 차례로 부르므로
+ *       호출마다 따로 기다리면 사용자가 "분석 중"을 훨씬 오래 본다. 기한이 이미 지났으면 넣지 않고 TIMEOUT 이다.</li>
  *   <li>{@code resend-after} 동안 결과가 없으면 <b>같은 id</b>로 다시 넣는다 — 큐 Redis 는 디스크에 저장하지 않아
  *       재시작하면 메시지가 사라진다. AI 는 같은 id 를 한 번만 실행한다(멱등).</li>
  *   <li>{@code wait-timeout} 을 넘으면 TIMEOUT 으로 끝낸다.</li>
@@ -155,22 +157,28 @@ public class QueueAiServerClient implements AiServerClient {
 
     private AiQueue.Result await(String stream, Map<String, String> message, AiQueue.Waiting waiting,
                                  String operation) {
-        Instant deadline = clock.instant().plus(properties.waitTimeout());
+        Instant deadline = deadline();
+        if (!clock.instant().isBefore(deadline)) {
+            // 작업 기한이 이미 지났다 — 넣어 봐야 결과를 기다리지 않으니 Bedrock 만 쓴다
+            log.warn("AI job deadline passed before {} {}; not enqueuing", operation, message.get("id"));
+            throw timeout(operation);
+        }
         put(stream, message, operation);
         try {
             while (true) {
                 Duration left = Duration.between(clock.instant(), deadline);
                 if (left.isNegative() || left.isZero()) {
-                    log.warn("AI queue call timed out ({} {}) after {}", operation, message.get("id"),
-                            properties.waitTimeout());
-                    throw new AiServerUnavailableException(Reason.TIMEOUT, operation,
-                            new IllegalStateException("결과를 " + properties.waitTimeout() + " 동안 받지 못했어요."));
+                    log.warn("AI queue call timed out ({} {}) at {}", operation, message.get("id"), deadline);
+                    throw timeout(operation);
                 }
-                AiQueue.Result result = waiting.await(min(left, properties.resendAfter()));
+                boolean untilDeadline = left.compareTo(properties.resendAfter()) <= 0;
+                AiQueue.Result result = waiting.await(untilDeadline ? left : properties.resendAfter());
                 if (result != null) {
                     return result;
                 }
-                if (clock.instant().isBefore(deadline)) {
+                // 다시 넣기 간격을 다 기다렸을 때만 다시 넣는다. 기한까지 기다린 것이면 곧 TIMEOUT 이다 —
+                // 기다림이 밀리초로 잘려 기한 바로 앞에 끝나도 넣지 않는다(PR #69 CI 에서 포기 직전에 한 번 더 넣었다)
+                if (!untilDeadline) {
                     // 메시지가 사라졌을 수 있다(큐 Redis 재시작). 같은 id 라 AI 는 이미 처리 중이면 다시 하지 않는다
                     log.info("No AI queue result for {} {} in {}; sending it again", operation, message.get("id"),
                             properties.resendAfter());
@@ -181,6 +189,20 @@ public class QueueAiServerClient implements AiServerClient {
             Thread.currentThread().interrupt();   // 종료 중 — 작업은 실패로 정리된다
             throw new AiServerUnavailableException(Reason.GPU_UNAVAILABLE, operation, interrupted);
         }
+    }
+
+    /** 이 호출을 기다릴 끝: 호출 상한과, AI 작업 안이면 작업 기한 중 이른 쪽 */
+    private Instant deadline() {
+        Instant call = clock.instant().plus(properties.waitTimeout());
+        return AiCallContext.currentJobAcceptedAt()
+                .map(accepted -> accepted.plus(properties.jobTimeout()))
+                .filter(job -> job.isBefore(call))
+                .orElse(call);
+    }
+
+    private static AiServerUnavailableException timeout(String operation) {
+        return new AiServerUnavailableException(Reason.TIMEOUT, operation,
+                new IllegalStateException("AI 결과를 기한 안에 받지 못했어요."));
     }
 
     private void put(String stream, Map<String, String> message, String operation) {
@@ -218,9 +240,5 @@ public class QueueAiServerClient implements AiServerClient {
             log.debug("Could not read usage from AI queue result", e);
             return null;
         }
-    }
-
-    private static Duration min(Duration a, Duration b) {
-        return a.compareTo(b) <= 0 ? a : b;
     }
 }

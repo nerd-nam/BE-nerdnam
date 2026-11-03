@@ -8,6 +8,7 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.micrometer.observation.ObservationRegistry;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -168,7 +169,7 @@ class QueueAiServerClientTest {
     @Test
     void 큐_Redis_에_닿지_못하면_GPU_UNAVAILABLE_로_바로_끝낸다() {
         AiQueueProperties unreachable = new AiQueueProperties(true, "localhost", 1, null, null,
-                Duration.ofSeconds(1), "test-" + UUID.randomUUID(), Duration.ofMinutes(1), Duration.ofMinutes(1), null, null);
+                Duration.ofSeconds(1), "test-" + UUID.randomUUID(), Duration.ofMinutes(1), Duration.ofMinutes(1), null, null, null);
         queue = new AiQueue(unreachable);
         QueueAiServerClient client = new QueueAiServerClient(queue, unreachable, new StubAiServerClient(),
                 ObservationRegistry.NOOP, () -> TRACEPARENT);
@@ -198,9 +199,85 @@ class QueueAiServerClientTest {
     @Test
     void 큐_Redis_에_닿지_못하면_새_작업을_막는다() {
         queue = new AiQueue(new AiQueueProperties(true, "localhost", 1, null, null, Duration.ofSeconds(1),
-                "test-" + UUID.randomUUID(), null, null, null, null));
+                "test-" + UUID.randomUUID(), null, null, null, null, null));
 
         assertThat(new QueueBacklog(queue, 200).full()).isTrue();
+    }
+
+    @Test
+    void AI_작업_안의_호출은_호출_상한이_남아도_작업_기한까지만_기다린다() {
+        // 분석은 AI 를 4번 차례로 부른다. 호출마다 20분씩이면 사용자는 "분석 중"을 훨씬 오래 본다 (BE #66)
+        // 기한은 넉넉히 3초 — 느린 CI 에서 첫 호출 준비(직렬화 등)만으로 1초가 지나 "넣지 않음"이 될 수 있다
+        worker = new FakeAiWorker(uri(), r -> List.of());
+        QueueAiServerClient client = client(props(Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(3)));
+        long started = System.nanoTime();
+
+        inJob(Instant.now(), () -> assertThatThrownBy(
+                () -> client.match(new MatchCall.Request(List.of())))
+                .isInstanceOfSatisfying(AiServerUnavailableException.class,
+                        e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.TIMEOUT)));
+
+        assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(15));   // 호출 상한은 1분
+        // 가짜 작업자는 따로 읽으므로 받았는지는 기다렸다 본다 (넣은 것은 한 번 — 다시 넣기는 1분 뒤)
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertThat(worker.received).hasSize(1));
+    }
+
+    @Test
+    void AI_작업_기한이_이미_지났으면_큐에_넣지_않고_TIMEOUT() throws InterruptedException {
+        worker = new FakeAiWorker(uri(), r -> List.of(FakeAiWorker.ok(r, "{\"lines\": []}")));
+        QueueAiServerClient client = client(props(Duration.ofMinutes(1), Duration.ofMinutes(1), Duration.ofSeconds(1)));
+
+        inJob(Instant.now().minusSeconds(5), () -> assertThatThrownBy(
+                () -> client.gapGuide(new GapGuideCall.Request(List.of(), List.of())))
+                .isInstanceOfSatisfying(AiServerUnavailableException.class,
+                        e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.TIMEOUT)));
+
+        Thread.sleep(500);
+        assertThat(worker.received).isEmpty();   // Bedrock 을 부르지 않는다
+    }
+
+    @Test
+    void 기한까지_기다린_뒤에는_기한_직전이어도_다시_넣지_않는다() {
+        // 기다림은 밀리초로 잘려 기한 바로 앞에 끝날 수 있다. 그때 "아직 기한 전"이라며 다시 넣으면
+        // 포기 직전에 Bedrock 을 한 번 더 부른다(PR #69 CI). 1초 뒤부터 0.2초 늦게 가는 시계로 그 순간을 만든다
+        worker = new FakeAiWorker(uri(), r -> List.of());
+        AiQueueProperties properties = props(Duration.ofMillis(800), Duration.ofMinutes(1), Duration.ofMillis(1500));
+        queue = new AiQueue(properties);
+        Instant lagFrom = Instant.now().plusSeconds(1);
+        java.time.Clock lagging = new java.time.Clock() {
+            @Override
+            public Instant instant() {
+                Instant now = Instant.now();
+                return now.isAfter(lagFrom) ? now.minusMillis(200) : now;
+            }
+
+            @Override
+            public java.time.ZoneId getZone() {
+                return java.time.ZoneOffset.UTC;
+            }
+
+            @Override
+            public java.time.Clock withZone(java.time.ZoneId zone) {
+                return this;
+            }
+        };
+        QueueAiServerClient client = new QueueAiServerClient(queue, properties, new StubAiServerClient(),
+                ObservationRegistry.NOOP, () -> TRACEPARENT, lagging);
+
+        inJob(Instant.now(), () -> assertThatThrownBy(() -> client.match(new MatchCall.Request(List.of())))
+                .isInstanceOfSatisfying(AiServerUnavailableException.class,
+                        e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.TIMEOUT)));
+
+        // 0초에 넣고, 0.8초에 다시 넣기 간격을 다 기다려 한 번 다시 넣는다. 그 뒤 기한(1.5초)까지 기다린 것은 다시 넣지 않는다
+        await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(3))
+                .untilAsserted(() -> assertThat(worker.received).hasSize(2));
+    }
+
+    private static void inJob(Instant acceptedAt, Runnable body) {
+        AiCallContext.with(new AiCallContext(1L, "JOB_POSTING", 1L, acceptedAt), () -> {
+            body.run();
+            return null;
+        });
     }
 
     private QueueAiServerClient client(AiQueueProperties properties) {
@@ -210,8 +287,12 @@ class QueueAiServerClientTest {
     }
 
     private static AiQueueProperties props(Duration resendAfter, Duration waitTimeout) {
+        return props(resendAfter, waitTimeout, null);
+    }
+
+    private static AiQueueProperties props(Duration resendAfter, Duration waitTimeout, Duration jobTimeout) {
         return new AiQueueProperties(true, REDIS.getHost(), REDIS.getMappedPort(6379), null, null, null,
-                "test-" + UUID.randomUUID(), resendAfter, waitTimeout, null, 3);
+                "test-" + UUID.randomUUID(), resendAfter, waitTimeout, null, jobTimeout, 3);
     }
 
     private static String uri() {
