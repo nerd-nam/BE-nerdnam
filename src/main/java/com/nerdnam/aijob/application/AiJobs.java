@@ -88,9 +88,10 @@ public class AiJobs {
         if (saturated() || backlog.full()) {
             throw new BusinessException(ErrorCode.AI_UNAVAILABLE, BUSY_MESSAGE);
         }
+        Instant acceptedAt = Instant.now();   // 큐 경로의 작업 기한은 여기서부터 잰다 (BE #66)
         Accepted<T> accepted = accept(request, work);
         inFlight.put(accepted.jobId(), work);
-        Runnable task = () -> run(accepted.jobId(), request, accepted.input(), work);
+        Runnable task = () -> run(accepted.jobId(), acceptedAt, request, accepted.input(), work);
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             // 바깥 트랜잭션이 있으면 작업 행이 커밋된 뒤에 실행해야 작업 스레드가 그 행을 볼 수 있다
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -186,16 +187,18 @@ public class AiJobs {
      * 끝나고 이 span 이 그 자식으로 이어진다(실행기가 trace 를 넘긴다). 작업 id 는 span 속성으로만 넣는다 —
      * 지표 label 로 쓰면 시계열이 무한히 늘어나므로 high cardinality 로 둔다.
      */
-    private <T, R> void run(Long jobId, JobRequest request, T input, JobWork<T, R> work) {
+    private <T, R> void run(Long jobId, Instant acceptedAt, JobRequest request, T input, JobWork<T, R> work) {
         Observation.createNotStarted("nerdnam.ai.job", observations)
                 .contextualName("ai-job " + request.jobType().name().toLowerCase(java.util.Locale.ROOT))
                 .lowCardinalityKeyValue("job.type", request.jobType().name().toLowerCase(java.util.Locale.ROOT))
                 .highCardinalityKeyValue("job.id", String.valueOf(jobId))
-                .observe(() -> runObserved(jobId, request, input, work));
+                .observe(() -> runObserved(jobId, acceptedAt, request, input, work));
     }
 
-    private <T, R> void runObserved(Long jobId, JobRequest request, T input, JobWork<T, R> work) {
-        AiCallContext context = new AiCallContext(request.memberId(), request.targetType().name(), request.targetId());
+    private <T, R> void runObserved(Long jobId, Instant acceptedAt, JobRequest request, T input,
+                                    JobWork<T, R> work) {
+        AiCallContext context = new AiCallContext(request.memberId(), request.targetType().name(), request.targetId(),
+                acceptedAt);
         try {
             // 큐에서 기다리는 사이 이미 끝난 작업(다른 Pod 의 정리 등)은 AI 를 부르지 않는다 — 결과를 써도 버려지고
             // 토큰만 쓴다. 작업 행만 실패로 바뀌고 대상(분석·탭)은 그대로이므로 대상 정리만 한다

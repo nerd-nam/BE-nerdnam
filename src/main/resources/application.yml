@@ -184,6 +184,8 @@ nerdnam:
       consumer: ${HOSTNAME:}            # 결과 스트림 ai:res:{Pod 이름}
       resend-after: 5m                  # 이만큼 결과가 없으면 같은 id 로 다시 넣는다 (큐 Redis 재시작으로 사라졌을 때)
       wait-timeout: 20m                 # 호출 하나를 이보다 오래 기다리지 않는다 → TIMEOUT. 재시험 뒤 정한다
+      job-timeout: 20m                  # AI 작업 하나(분석은 AI 4번)를 접수부터 이 안에 끝낸다 → TIMEOUT. 사용자가 "분석 중"을 보는 최대 시간.
+                                        # AI 의 AI_QUEUE_MAX_AGE·완료 표시(30분)보다 짧아야 한다 (ADR-0009)
       result-ttl: 1h
       max-backlog: 200                  # 사용자가 기다리는 요청 스트림(llm·embed)에 이만큼 쌓이면 새 AI 작업을 503 으로 거절한다.
                                         # Nova 분당 20회 기준 약 10분 대기다. AI 가 처리한 요청을 지운다는 전제(SPEC #101)

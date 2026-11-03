@@ -86,6 +86,24 @@ class AiJobBusyTest extends ApiTestSupport {
                 .isEqualTo("COMPLETED");
     }
 
+    @Test
+    void 작업_안의_AI_호출에는_접수_시각이_실린다() {
+        // 큐 경로의 작업 기한(job-timeout)은 이 시각부터 잰다 (BE #66)
+        Long member = newMember();
+        java.util.concurrent.atomic.AtomicReference<java.util.Optional<java.time.Instant>> seen =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        java.time.Instant before = java.time.Instant.now();
+
+        pod(Runnable::run, AiBacklog.NONE).start(
+                JobRequest.of(member, JobType.FIT_ANALYSIS, null, TargetType.JOB_POSTING, member),
+                JobWork.<String, String>of(() -> "입력", input -> {
+                    seen.set(com.nerdnam.infra.ai.AiCallContext.currentJobAcceptedAt());
+                    return "결과";
+                }, result -> null));
+
+        assertThat(seen.get()).hasValueSatisfying(at -> assertThat(at).isBetween(before, java.time.Instant.now()));
+    }
+
     private AiJobs pod(TaskExecutor executor, AiBacklog backlog) {
         StaticListableBeanFactory beans = new StaticListableBeanFactory();
         beans.addBean("backlog", backlog);

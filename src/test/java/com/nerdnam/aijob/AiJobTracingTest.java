@@ -35,7 +35,7 @@ class AiJobTracingTest {
         });
         TaskExecutor executor = new AiJobConfig().aiJobExecutor(
                 new AiJobProperties(false, Duration.ofMinutes(20), 1, 0),
-                new AiQueueProperties(false, null, null, null, null, null, null, null, null, null, null));
+                new AiQueueProperties(false, null, null, null, null, null, null, null, null, null, null, null));
         try {
             Observation request = Observation.start("http.server.requests", registry);
             CompletableFuture<Observation> seenInWorker = new CompletableFuture<>();
