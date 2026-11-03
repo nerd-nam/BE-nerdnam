@@ -14,6 +14,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.savedrequest.NullRequestCache;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -50,6 +51,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/csrf").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll())
+                // 로그인 안 된 요청을 "로그인 뒤 돌아갈 요청"으로 세션에 저장하지 않는다. 저장하면 401 마다
+                // Redis 에 7일짜리 빈 세션이 생긴다 (NerdnamRedisMemoryHigh). 로그인 뒤 갈 곳은 successHandler 가
+                // 정하고 돌아갈 화면은 웹이 기억하므로, 저장한 요청은 원래 쓰이지 않았다
+                .requestCache(c -> c.requestCache(new NullRequestCache()))
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> problem(res, ErrorCode.UNAUTHORIZED))
                         .accessDeniedHandler((req, res, ex) -> problem(res, ErrorCode.FORBIDDEN)))
