@@ -21,6 +21,8 @@ jobs:
   push:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      image: ${{ steps.build.outputs.digest }} # <registry>/nerdnam-dev/api@sha256:… (INFRA 배포 PR 에 넘긴다)
     env:
       AWS_REGION: ap-northeast-2
       ECR_REPOSITORY: nerdnam-dev/api
@@ -99,5 +101,21 @@ jobs:
             echo "| 태그 | \`$IMAGE\` |"
             echo "| digest | \`$DIGEST\` |"
             echo
-            echo "배포 정의(INFRA \`gitops/apps/images.yaml\`)에는 **digest** 를 넣습니다."
+            echo "배포 정의(INFRA \`gitops/apps/images.yaml\`)는 아래 job(INFRA 배포 PR)이 이 **digest** 로 PR 을 엽니다."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ECR 에 올린 이미지로 INFRA gitops/apps/images.yaml 을 고치는 PR 을 연다(브랜치 deploy/api). merge·배포(Argo sync)는 사람이 한다.
+  # 코드는 INFRA 에 있다: .github/workflows/image-pr.yml, docs/이미지-배포-PR.md. 조직 변수 INFRA_PR_APP_ID 가 없으면 건너뛴다.
+  infra-pr:
+    name: INFRA 배포 PR
+    needs: push
+    if: needs.push.outputs.image != '' && vars.INFRA_PR_APP_ID != ''
+    permissions:
+      contents: read
+    uses: nerd-nam/INFRA-nerdnam/.github/workflows/image-pr.yml@main
+    with:
+      app: api
+      image: ${{ needs.push.outputs.image }}
+      app_id: ${{ vars.INFRA_PR_APP_ID }}
+    secrets:
+      app_private_key: ${{ secrets.INFRA_PR_APP_PRIVATE_KEY }}
