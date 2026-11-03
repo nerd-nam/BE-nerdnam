@@ -19,11 +19,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param resendAfter 이만큼 결과가 없으면 같은 id 로 다시 넣는다. 큐 Redis 재시작으로 메시지가 사라졌을 때를 위해서다
  * @param waitTimeout 호출 하나를 이보다 오래 기다리지 않는다 → TIMEOUT. 화면이 "진행 중"에 끝없이 남지 않게
  * @param resultTtl   결과 스트림 키의 만료. 내려간 Pod 의 스트림이 남지 않게 읽을 때마다 늘린다
+ * @param maxBacklog  사용자가 기다리는 요청 스트림({@code ai:req:llm}·{@code ai:req:embed})에 이보다 많이 쌓이면
+ *                    새 AI 작업을 접수 단계에서 거절한다 ({@link AiBacklog})
  */
 @ConfigurationProperties(prefix = "nerdnam.ai.queue")
 public record AiQueueProperties(boolean enabled, String host, Integer port, String username, String password,
                                 Duration timeout, String consumer, Duration resendAfter, Duration waitTimeout,
-                                Duration resultTtl) {
+                                Duration resultTtl, Integer maxBacklog) {
 
     public AiQueueProperties {
         host = blank(host) ? "localhost" : host;
@@ -33,6 +35,7 @@ public record AiQueueProperties(boolean enabled, String host, Integer port, Stri
         resendAfter = resendAfter == null ? Duration.ofMinutes(5) : resendAfter;
         waitTimeout = waitTimeout == null ? Duration.ofMinutes(20) : waitTimeout;
         resultTtl = resultTtl == null ? Duration.ofHours(1) : resultTtl;
+        maxBacklog = maxBacklog == null || maxBacklog <= 0 ? 200 : maxBacklog;
     }
 
     /** 결과를 받을 스트림 — 요청 메시지의 {@code reply_to} */

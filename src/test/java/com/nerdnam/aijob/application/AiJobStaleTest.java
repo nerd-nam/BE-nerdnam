@@ -110,7 +110,8 @@ class AiJobStaleTest extends ApiTestSupport {
     private AiJobs newPod() {
         StaticListableBeanFactory none = new StaticListableBeanFactory();
         return new AiJobs(jobs, transactionManager, queued::add, new AiJobProperties(false, STALE_AFTER, 4, 0),
-                new AiJobDrain(), none.getBeanProvider(ObservationRegistry.class));
+                new AiJobDrain(), none.getBeanProvider(ObservationRegistry.class),
+                none.getBeanProvider(com.nerdnam.infra.ai.AiBacklog.class));
     }
 
     private Long startJob(AiJobs pod) {

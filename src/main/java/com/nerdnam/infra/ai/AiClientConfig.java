@@ -38,6 +38,16 @@ public class AiClientConfig {
         return new RecordingAiServerClient(client, new JdbcAiCallLog(jdbc));
     }
 
+    /** 새 AI 작업을 받아도 되는지 — 큐 경로에서만 큐에 쌓인 양을 본다 (BE #67) */
+    @Bean
+    public AiBacklog aiBacklog(AiServerProperties properties, AiQueueProperties queueProperties,
+                               ObjectProvider<AiQueue> queue) {
+        if (properties.stub() || !queueProperties.enabled()) {
+            return AiBacklog.NONE;
+        }
+        return new QueueBacklog(queue.getObject(), queueProperties.maxBacklog());
+    }
+
     /** 큐 연결과 결과 읽는 스레드. 끌 때 닫는다 (close 를 Spring 이 부른다) */
     @Bean
     @ConditionalOnBooleanProperty("nerdnam.ai.queue.enabled")

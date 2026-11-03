@@ -7,12 +7,14 @@ import com.nerdnam.aijob.domain.TargetType;
 import com.nerdnam.common.error.BusinessException;
 import com.nerdnam.common.error.ErrorCode;
 import jakarta.annotation.PreDestroy;
+import com.nerdnam.infra.ai.AiBacklog;
 import com.nerdnam.infra.ai.AiCallContext;
 import com.nerdnam.infra.ai.AiServerUnavailableException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.Optional;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
@@ -23,6 +25,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -46,6 +49,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class AiJobs {
 
     private static final Logger log = LoggerFactory.getLogger(AiJobs.class);
+    /** 몰려서 받지 않을 때. 계약의 AI_UNAVAILABLE(503)이라 웹은 이미 "잠시 뒤 다시 시도"를 띄운다 */
+    static final String BUSY_MESSAGE = "지금 AI 요청이 많아 시작하지 못했어요. 입력한 내용은 그대로 남아 있으니 잠시 후 다시 시도해 주세요.";
 
     private final AiJobRepository jobs;
     private final TransactionTemplate tx;
@@ -53,18 +58,21 @@ public class AiJobs {
     private final AiJobProperties properties;
     private final AiJobDrain drain;
     private final ObservationRegistry observations;
+    private final AiBacklog backlog;
     /** 이 Pod 가 접수해 아직 끝내지 못한 작업. 종료 때 실패로 정리한다 (BE #45) */
     private final Map<Long, JobWork<?, ?>> inFlight = new ConcurrentHashMap<>();
 
     public AiJobs(AiJobRepository jobs, PlatformTransactionManager transactionManager,
                   @Qualifier("aiJobExecutor") TaskExecutor executor, AiJobProperties properties,
-                  AiJobDrain drain, ObjectProvider<ObservationRegistry> observations) {
+                  AiJobDrain drain, ObjectProvider<ObservationRegistry> observations,
+                  ObjectProvider<AiBacklog> backlog) {
         this.jobs = jobs;
         this.tx = new TransactionTemplate(transactionManager);
         this.executor = executor;
         this.properties = properties;
         this.drain = drain;
         this.observations = observations.getIfAvailable(() -> ObservationRegistry.NOOP);
+        this.backlog = backlog.getIfAvailable(() -> AiBacklog.NONE);
         drain.inFlightSource(inFlight::size);
     }
 
@@ -74,6 +82,11 @@ public class AiJobs {
         // 웹은 이미 "잠시 뒤 다시 시도해 주세요"를 띄운다 — 사용자가 다시 누르면 새 Pod 가 받는다
         if (drain.draining()) {
             throw new BusinessException(ErrorCode.AI_UNAVAILABLE, ErrorCode.AI_UNAVAILABLE.defaultMessage());
+        }
+        // 몰렸으면 작업을 만들기 전에 거절한다 (BE #67). 만든 뒤 실패시키면 사용자는 "진행 중"을 보다가 실패를 받고,
+        // 실행기가 꽉 찬 경우는 INTERNAL 로 남아 원인이 가려진다
+        if (saturated() || backlog.full()) {
+            throw new BusinessException(ErrorCode.AI_UNAVAILABLE, BUSY_MESSAGE);
         }
         Accepted<T> accepted = accept(request, work);
         inFlight.put(accepted.jobId(), work);
@@ -129,6 +142,20 @@ public class AiJobs {
     }
 
     // ------------------------------------------------------------------ 내부
+
+    /** 이 Pod 의 작업 스레드와 대기 칸이 모두 찼는지. 넘기면 실행기가 거절해 작업이 INTERNAL 로 실패한다 */
+    private boolean saturated() {
+        if (!(executor instanceof ThreadPoolTaskExecutor pool)) {
+            return false;   // 테스트의 동기 실행기 등
+        }
+        ThreadPoolExecutor e = pool.getThreadPoolExecutor();
+        boolean full = e.getActiveCount() >= e.getMaximumPoolSize() && e.getQueue().remainingCapacity() == 0;
+        if (full) {
+            log.warn("AI job executor is full ({} running, {} queued); rejecting new AI jobs",
+                    e.getActiveCount(), e.getQueue().size());
+        }
+        return full;
+    }
 
     private <T> Accepted<T> accept(JobRequest request, JobWork<T, ?> work) {
         try {

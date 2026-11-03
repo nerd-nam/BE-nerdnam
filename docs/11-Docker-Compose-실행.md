@@ -79,7 +79,7 @@ AI_QUEUE_REDIS_USERNAME=api          # ACL 을 쓰면
 AI_QUEUE_REDIS_PASSWORD=...
 ```
 
-결과 스트림 이름은 `ai:res:{HOSTNAME}` 이다(Kubernetes 는 Pod 이름). 문제가 생기면 `AI_QUEUE_ENABLED=false` 로 HTTP 경로로 돌아간다.
+결과 스트림 이름은 `ai:res:{HOSTNAME}` 이다(Kubernetes 는 Pod 이름). 큐 Redis 는 readiness 에 넣지 않는다 — 죽어도 AI 작업만 "잠시 뒤 다시 시도"(503)로 거절되고 나머지 API 는 동작한다. api ACL 은 `ai:req:*` 에 `XADD`·`XLEN`, `ai:res:*` 에 `XREAD`·`XDEL`·`EXPIRE` (BE #67). 문제가 생기면 `AI_QUEUE_ENABLED=false` 로 HTTP 경로로 돌아간다.
 
 FastAPI의 `AI_MODE=stub`은 가짜 응답, `AI_MODE=real`은 실제 모델 모드다. 실제 모델을 Mac에서 실행할 때는 AI README와 SPEC 5.5에 따라 읽기 제한도 별도로 조정해야 한다. AI 컨테이너·모델 다운로드는 이 Compose에 포함하지 않는다.
 

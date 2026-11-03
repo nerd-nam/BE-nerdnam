@@ -185,6 +185,8 @@ nerdnam:
       resend-after: 5m                  # 이만큼 결과가 없으면 같은 id 로 다시 넣는다 (큐 Redis 재시작으로 사라졌을 때)
       wait-timeout: 20m                 # 호출 하나를 이보다 오래 기다리지 않는다 → TIMEOUT. 재시험 뒤 정한다
       result-ttl: 1h
+      max-backlog: 200                  # 사용자가 기다리는 요청 스트림(llm·embed)에 이만큼 쌓이면 새 AI 작업을 503 으로 거절한다.
+                                        # Nova 분당 20회 기준 약 10분 대기다. AI 가 처리한 요청을 지운다는 전제(SPEC #101)
   ai-job:
     sync: false                       # true 면 AI 작업을 요청 스레드에서 바로 실행 (테스트용)
     # 이보다 오래 진행 중인 작업은 실패(TIMEOUT)로 정리. **(읽기 시간 제한의 합) × 시도 횟수 2 보다 커야 한다** —

@@ -168,7 +168,7 @@ class QueueAiServerClientTest {
     @Test
     void 큐_Redis_에_닿지_못하면_GPU_UNAVAILABLE_로_바로_끝낸다() {
         AiQueueProperties unreachable = new AiQueueProperties(true, "localhost", 1, null, null,
-                Duration.ofSeconds(1), "test-" + UUID.randomUUID(), Duration.ofMinutes(1), Duration.ofMinutes(1), null);
+                Duration.ofSeconds(1), "test-" + UUID.randomUUID(), Duration.ofMinutes(1), Duration.ofMinutes(1), null, null);
         queue = new AiQueue(unreachable);
         QueueAiServerClient client = new QueueAiServerClient(queue, unreachable, new StubAiServerClient(),
                 ObservationRegistry.NOOP, () -> TRACEPARENT);
@@ -176,6 +176,31 @@ class QueueAiServerClientTest {
         assertThatThrownBy(() -> client.extractRequirements(new RequirementExtraction.Request(List.of())))
                 .isInstanceOfSatisfying(AiServerUnavailableException.class,
                         e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.GPU_UNAVAILABLE));
+    }
+
+    @Test
+    void 밀린_요청은_사용자가_기다리는_스트림만_세고_상한에_닿으면_막는다() {
+        queue = new AiQueue(props(Duration.ofMinutes(1), Duration.ofMinutes(1)));   // max-backlog 3
+        AiBacklog backlog = new QueueBacklog(queue, 3);
+        redis.sync().xadd("ai:req:llm", Map.of("id", "a"));
+        redis.sync().xadd("ai:req:embed", Map.of("id", "b"));
+        for (int i = 0; i < 5; i++) {
+            redis.sync().xadd("ai:req:embed-bg", Map.of("id", "doc" + i));   // 문서 임베딩은 세지 않는다
+        }
+
+        assertThat(queue.backlog()).isEqualTo(2);
+        assertThat(backlog.full()).isFalse();
+
+        redis.sync().xadd("ai:req:llm", Map.of("id", "c"));
+        assertThat(backlog.full()).isTrue();
+    }
+
+    @Test
+    void 큐_Redis_에_닿지_못하면_새_작업을_막는다() {
+        queue = new AiQueue(new AiQueueProperties(true, "localhost", 1, null, null, Duration.ofSeconds(1),
+                "test-" + UUID.randomUUID(), null, null, null, null));
+
+        assertThat(new QueueBacklog(queue, 200).full()).isTrue();
     }
 
     private QueueAiServerClient client(AiQueueProperties properties) {
@@ -186,7 +211,7 @@ class QueueAiServerClientTest {
 
     private static AiQueueProperties props(Duration resendAfter, Duration waitTimeout) {
         return new AiQueueProperties(true, REDIS.getHost(), REDIS.getMappedPort(6379), null, null, null,
-                "test-" + UUID.randomUUID(), resendAfter, waitTimeout, null);
+                "test-" + UUID.randomUUID(), resendAfter, waitTimeout, null, 3);
     }
 
     private static String uri() {

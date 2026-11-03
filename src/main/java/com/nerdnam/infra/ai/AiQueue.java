@@ -94,6 +94,17 @@ public class AiQueue implements AutoCloseable {
         return connection;
     }
 
+    /**
+     * 사용자가 기다리는 요청 스트림({@code ai:req:llm}·{@code ai:req:embed})에 남은 메시지 수. 문서 임베딩
+     * ({@code ai:req:embed-bg})은 세지 않는다 — 뒤에서 천천히 돌아도 되는 일이라 사용자 작업을 막을 이유가 없다.
+     *
+     * <p>AI 가 처리한 요청을 지운다는 전제다(SPEC #101 "처리한 쪽이 지움"). 실패하면 Redis 예외를 그대로 던진다.
+     */
+    public long backlog() {
+        var sync = commands().sync();
+        return sync.xlen(QueueAiServerClient.LLM) + sync.xlen(QueueAiServerClient.EMBED);
+    }
+
     /** 이 큐가 결과를 받는 스트림 — 요청 메시지의 {@code reply_to} */
     public String replyStream() {
         return properties.replyStream();
