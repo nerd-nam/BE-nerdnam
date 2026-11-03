@@ -68,6 +68,10 @@ public class AiJob {
     @Column(name = "finished_at")
     private Instant finishedAt;
 
+    /** 작업을 든 Pod 가 마지막으로 살아 있다고 남긴 시각 (BE #66). 정리 쿼리만 쓴다 */
+    @Column(name = "alive_at", insertable = false, updatable = false)
+    private Instant aliveAt;
+
     public static AiJob start(Long memberId, JobType jobType, String mode, TargetType targetType, Long targetId,
                               String lockScope) {
         AiJob job = new AiJob();

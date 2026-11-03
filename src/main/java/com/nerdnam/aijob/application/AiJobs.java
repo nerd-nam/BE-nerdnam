@@ -105,6 +105,10 @@ public class AiJobs {
     /**
      * 서버 재시작 등으로 끝나지 못한 작업을 정리한다 (1분마다).
      *
+     * <p>먼저 이 Pod 가 들고 있는 작업에 "살아 있음"을 남긴다. 정리는 Pod 마다 돌고 각 Pod 는 자기 작업만 알므로,
+     * 이걸 남기지 않으면 다른 Pod 가 아직 기다리는 작업을 지운다(배포 중 2대, AI 큐 대기 — BE #66).
+     * 그래서 시간은 마지막으로 살아 있던 시각부터 잰다.
+     *
      * <p>이 Pod 가 들고 있는 작업은 뺀다. 시간은 접수 시각부터 재므로 큐에서 기다린 시간도 들어가는데,
      * AI 서버가 한도에 걸리면 실패 대신 기다리게 되면서(ADR-0008) 작업이 길어져 큐 대기도 길어진다.
      * 살아 있는 작업을 실패로 지우면 사용자는 "다시 시도"를 누르고, 지운 작업은 나중에 그대로 돌아
@@ -115,7 +119,10 @@ public class AiJobs {
         Instant now = Instant.now();
         // 빈 목록의 not in 은 DB 마다 달라서 없는 id 하나를 넣는다
         List<Long> alive = inFlight.isEmpty() ? List.of(-1L) : List.copyOf(inFlight.keySet());
-        Integer count = tx.execute(s -> jobs.failStale(now.minus(properties.staleAfter()), now, alive));
+        Integer count = tx.execute(s -> {
+            jobs.markAlive(alive, now);
+            return jobs.failStale(now.minus(properties.staleAfter()), now, alive);
+        });
         if (count != null && count > 0) {
             log.warn("Marked {} stale AI jobs as failed (TIMEOUT)", count);
         }
