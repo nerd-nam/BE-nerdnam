@@ -236,6 +236,43 @@ class QueueAiServerClientTest {
         assertThat(worker.received).isEmpty();   // Bedrock 을 부르지 않는다
     }
 
+    @Test
+    void 기한까지_기다린_뒤에는_기한_직전이어도_다시_넣지_않는다() {
+        // 기다림은 밀리초로 잘려 기한 바로 앞에 끝날 수 있다. 그때 "아직 기한 전"이라며 다시 넣으면
+        // 포기 직전에 Bedrock 을 한 번 더 부른다(PR #69 CI). 1초 뒤부터 0.2초 늦게 가는 시계로 그 순간을 만든다
+        worker = new FakeAiWorker(uri(), r -> List.of());
+        AiQueueProperties properties = props(Duration.ofMillis(800), Duration.ofMinutes(1), Duration.ofMillis(1500));
+        queue = new AiQueue(properties);
+        Instant lagFrom = Instant.now().plusSeconds(1);
+        java.time.Clock lagging = new java.time.Clock() {
+            @Override
+            public Instant instant() {
+                Instant now = Instant.now();
+                return now.isAfter(lagFrom) ? now.minusMillis(200) : now;
+            }
+
+            @Override
+            public java.time.ZoneId getZone() {
+                return java.time.ZoneOffset.UTC;
+            }
+
+            @Override
+            public java.time.Clock withZone(java.time.ZoneId zone) {
+                return this;
+            }
+        };
+        QueueAiServerClient client = new QueueAiServerClient(queue, properties, new StubAiServerClient(),
+                ObservationRegistry.NOOP, () -> TRACEPARENT, lagging);
+
+        inJob(Instant.now(), () -> assertThatThrownBy(() -> client.match(new MatchCall.Request(List.of())))
+                .isInstanceOfSatisfying(AiServerUnavailableException.class,
+                        e -> assertThat(e.reason()).isEqualTo(AiServerUnavailableException.Reason.TIMEOUT)));
+
+        // 0초에 넣고, 0.8초에 다시 넣기 간격을 다 기다려 한 번 다시 넣는다. 그 뒤 기한(1.5초)까지 기다린 것은 다시 넣지 않는다
+        await().during(Duration.ofMillis(500)).atMost(Duration.ofSeconds(3))
+                .untilAsserted(() -> assertThat(worker.received).hasSize(2));
+    }
+
     private static void inJob(Instant acceptedAt, Runnable body) {
         AiCallContext.with(new AiCallContext(1L, "JOB_POSTING", 1L, acceptedAt), () -> {
             body.run();

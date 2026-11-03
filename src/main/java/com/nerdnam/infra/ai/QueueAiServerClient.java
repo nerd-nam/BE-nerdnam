@@ -171,11 +171,14 @@ public class QueueAiServerClient implements AiServerClient {
                     log.warn("AI queue call timed out ({} {}) at {}", operation, message.get("id"), deadline);
                     throw timeout(operation);
                 }
-                AiQueue.Result result = waiting.await(min(left, properties.resendAfter()));
+                boolean untilDeadline = left.compareTo(properties.resendAfter()) <= 0;
+                AiQueue.Result result = waiting.await(untilDeadline ? left : properties.resendAfter());
                 if (result != null) {
                     return result;
                 }
-                if (clock.instant().isBefore(deadline)) {
+                // 다시 넣기 간격을 다 기다렸을 때만 다시 넣는다. 기한까지 기다린 것이면 곧 TIMEOUT 이다 —
+                // 기다림이 밀리초로 잘려 기한 바로 앞에 끝나도 넣지 않는다(PR #69 CI 에서 포기 직전에 한 번 더 넣었다)
+                if (!untilDeadline) {
                     // 메시지가 사라졌을 수 있다(큐 Redis 재시작). 같은 id 라 AI 는 이미 처리 중이면 다시 하지 않는다
                     log.info("No AI queue result for {} {} in {}; sending it again", operation, message.get("id"),
                             properties.resendAfter());
@@ -237,9 +240,5 @@ public class QueueAiServerClient implements AiServerClient {
             log.debug("Could not read usage from AI queue result", e);
             return null;
         }
-    }
-
-    private static Duration min(Duration a, Duration b) {
-        return a.compareTo(b) <= 0 ? a : b;
     }
 }
